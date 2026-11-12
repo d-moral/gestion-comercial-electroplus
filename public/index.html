@@ -16,6 +16,7 @@
 
         <nav class="menu">
             <button class="menu-item active" data-panel="inicio">Inicio</button>
+            <button class="menu-item" data-panel="clientes">Clientes</button>
         </nav>
 
         <div class="sidebar-pie">
@@ -32,9 +33,69 @@
                 <p>Estructura base lista.</p>
             </div>
         </section>
+        <section id="panel-clientes" class="panel">
+            <div class="panel-encabezado">
+                <h2>Clientes</h2>
+                <button id="btn-nuevo-cliente" class="btn">+ Nuevo cliente</button>
+            </div>
+
+            <div class="tarjeta">
+                <input type="text" id="busqueda-clientes" class="input"
+                       placeholder="Buscar por nombre, DNI o teléfono..." autocomplete="off">
+
+                <div class="tabla-contenedor">
+                    <table class="tabla">
+                        <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>DNI</th>
+                            <th>Teléfono</th>
+                            <th>Dirección</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabla-clientes"></tbody>
+                    </table>
+                </div>
+
+                <div class="paginacion">
+                    <button id="clientes-anterior" class="btn-secundario">Anterior</button>
+                    <span id="clientes-pagina-info"></span>
+                    <button id="clientes-siguiente" class="btn-secundario">Siguiente</button>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
+<div id="modal-cliente" class="modal hidden">
+    <div class="modal-contenido">
+        <h3 id="modal-cliente-titulo">Nuevo cliente</h3>
+        <form id="form-cliente">
+            <label>Nombre *
+                <input type="text" id="cliente-nombre" class="input" required>
+            </label>
+            <label>DNI
+                <input type="text" id="cliente-dni" class="input">
+            </label>
+            <label>Teléfono
+                <input type="text" id="cliente-telefono" class="input">
+            </label>
+            <label>Dirección
+                <input type="text" id="cliente-direccion" class="input">
+            </label>
+            <label>Notas
+                <textarea id="cliente-notas" class="input" rows="3"></textarea>
+            </label>
 
+            <p id="cliente-error" class="mensaje-error hidden"></p>
+
+            <div class="modal-botones">
+                <button type="button" id="btn-cancelar-cliente" class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
 <script src="js/app.js"></script>
 </body>
 </html>
