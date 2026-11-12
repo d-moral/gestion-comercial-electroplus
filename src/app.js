@@ -1,0 +1,22 @@
+const express = require('express');
+require('dotenv').config();
+const pool = require('./db');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.use(express.json());
+app.use(express.static('public'));
+
+app.get('/health', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.json({ status: 'ok', db: 'ok' });
+    } catch (error) {
+        res.status(500).json({ status: 'error', db: 'sin conexión' });
+    }
+});
+
+app.listen(PORT, () => {
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
+});
