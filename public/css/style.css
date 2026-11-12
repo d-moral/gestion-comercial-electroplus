@@ -1,0 +1,227 @@
+:root {
+    --fondo: #fafaf9;
+    --superficie: #ffffff;
+    --borde: #e7e5e4;
+    --texto: #1c1917;
+    --texto-suave: #78716c;
+    --acento: #f59e0b;
+    --acento-oscuro: #b45309;
+    --acento-suave: #fef3c7;
+    --ok: #15803d;
+    --error: #b91c1c;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+body {
+    background: var(--fondo);
+    color: var(--texto);
+}
+
+.layout {
+    display: flex;
+    min-height: 100vh;
+}
+
+/* Barra lateral */
+.sidebar {
+    width: 230px;
+    background: var(--superficie);
+    border-right: 1px solid var(--borde);
+    display: flex;
+    flex-direction: column;
+    padding: 1.25rem 0.75rem;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+}
+
+.marca {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0 0.5rem 1.5rem;
+}
+
+.marca-icono {
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    background: var(--acento);
+    color: var(--texto);
+    font-weight: 800;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.marca-nombre {
+    font-size: 1.15rem;
+    font-weight: 700;
+}
+
+.menu {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    flex: 1;
+}
+
+.menu-item {
+    background: transparent;
+    border: none;
+    border-left: 3px solid transparent;
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    border-radius: 6px;
+    font-size: 0.95rem;
+    color: var(--texto-suave);
+    cursor: pointer;
+}
+
+.menu-item:hover {
+    background: var(--fondo);
+    color: var(--texto);
+}
+
+.menu-item.active {
+    background: var(--acento-suave);
+    border-left-color: var(--acento);
+    color: var(--acento-oscuro);
+    font-weight: 600;
+}
+
+.sidebar-pie {
+    padding: 0.5rem;
+}
+
+.estado {
+    font-size: 0.8rem;
+    color: var(--texto-suave);
+}
+
+.estado::before {
+    content: "";
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--texto-suave);
+    margin-right: 6px;
+}
+
+.estado.ok::before {
+    background: var(--ok);
+}
+
+.estado.error::before {
+    background: var(--error);
+}
+
+/* Contenido */
+.contenido {
+    flex: 1;
+    padding: 2rem;
+    max-width: 1100px;
+}
+
+.panel {
+    display: none;
+}
+
+.panel.active {
+    display: block;
+}
+
+.panel-encabezado {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+}
+
+.panel-encabezado h2 {
+    font-size: 1.5rem;
+}
+
+.tarjeta {
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 10px;
+    padding: 1.25rem;
+}
+
+/* Botones */
+button.btn {
+    background: var(--acento);
+    color: var(--texto);
+    border: none;
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+button.btn:hover {
+    background: #d98a06;
+}
+
+button.btn-secundario {
+    background: var(--superficie);
+    color: var(--texto);
+    border: 1px solid var(--borde);
+    padding: 0.55rem 1.1rem;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Celular / pantallas chicas */
+@media (max-width: 800px) {
+    .layout {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        width: 100%;
+        height: auto;
+        position: static;
+        flex-direction: row;
+        align-items: center;
+        border-right: none;
+        border-bottom: 1px solid var(--borde);
+        padding: 0.75rem;
+        overflow-x: auto;
+    }
+
+    .marca {
+        padding: 0 1rem 0 0;
+    }
+
+    .menu {
+        flex-direction: row;
+        flex: none;
+    }
+
+    .menu-item {
+        border-left: none;
+        border-bottom: 3px solid transparent;
+        white-space: nowrap;
+    }
+
+    .menu-item.active {
+        border-bottom-color: var(--acento);
+    }
+
+    .sidebar-pie {
+        margin-left: auto;
+    }
+
+    .contenido {
+        padding: 1rem;
+    }
+}
