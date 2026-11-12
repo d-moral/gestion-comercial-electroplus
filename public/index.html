@@ -15,7 +15,7 @@
         </div>
 
         <nav class="menu">
-            <button class="menu-item active" data-panel="inicio">Inicio</button>
+            <button class="menu-item active" data-panel="inicio">Resumen</button>
             <button class="menu-item" data-panel="clientes">Clientes</button>
             <button class="menu-item" data-panel="ventas">Ventas</button>
             <button class="menu-item" data-panel="cobros">Cobros</button>
@@ -30,10 +30,20 @@
     <main class="contenido">
         <section id="panel-inicio" class="panel active">
             <div class="panel-encabezado">
-                <h2>Inicio</h2>
+                <h2>Resumen</h2>
             </div>
             <div class="tarjeta">
-                <p>Estructura base lista.</p>
+                <div class="filtros">
+                    <label>Desde
+                        <input type="date" id="resumen-desde" class="input">
+                    </label>
+                    <label>Hasta
+                        <input type="date" id="resumen-hasta" class="input">
+                    </label>
+                    <button type="button" id="btn-resumen-hoy" class="btn-secundario">Hoy</button>
+                    <button type="button" id="btn-resumen-mes" class="btn-secundario">Este mes</button>
+                </div>
+                <div id="resumen-contenido"></div>
             </div>
         </section>
         <section id="panel-clientes" class="panel">

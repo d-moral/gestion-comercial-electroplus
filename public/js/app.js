@@ -11,6 +11,7 @@ function mostrarPanel(nombre) {
     if (nombre === 'ventas') cargarVentas();
     if (nombre === 'cobros') cargarCobros();
     if (nombre === 'gastos') cargarGastos();
+    if (nombre === 'inicio') cargarResumen();
 }
 
 document.querySelectorAll('.menu-item').forEach(btn => {
@@ -1096,3 +1097,93 @@ document.getElementById('tabla-gastos').addEventListener('click', (e) => {
         eliminarGasto(id);
     }
 });
+
+
+
+// ============================================================
+// RESUMEN (cierre del día / período)
+// ============================================================
+function etiquetaMetodo(metodo) {
+    const etiquetas = { efectivo: 'Efectivo', transferencia: 'Transferencia', otro: 'Otro' };
+    return etiquetas[metodo] || metodo;
+}
+
+async function cargarResumen() {
+    const inputDesde = document.getElementById('resumen-desde');
+    const inputHasta = document.getElementById('resumen-hasta');
+    if (!inputDesde.value) inputDesde.value = hoyLocal();
+    if (!inputHasta.value) inputHasta.value = hoyLocal();
+
+    const contenido = document.getElementById('resumen-contenido');
+    const params = new URLSearchParams({ desde: inputDesde.value, hasta: inputHasta.value });
+
+    try {
+        const res = await fetch(`/api/resumen?${params}`);
+        const d = await res.json();
+
+        if (!res.ok) {
+            contenido.innerHTML = `<p class="mensaje-error">${escaparHtml(d.error || 'No se pudo calcular el resumen')}</p>`;
+            return;
+        }
+
+        const periodo = d.desde === d.hasta
+            ? formatearFecha(d.desde)
+            : `${formatearFecha(d.desde)} al ${formatearFecha(d.hasta)}`;
+
+        const metodos = d.cobros.por_metodo.length
+            ? d.cobros.por_metodo.map(m => `${etiquetaMetodo(m.metodo)}: ${dinero(m.monto)}`).join(' · ')
+            : 'No hubo cobros en el período';
+
+        contenido.innerHTML = `
+            <h4 class="subtitulo">Ventas del período (${periodo}) - ${d.ventas.cantidad} ${d.ventas.cantidad === 1 ? 'venta' : 'ventas'}</h4>
+            <div class="venta-totales">
+                <div><span class="etiqueta">Total vendido</span><strong>${dinero(d.ventas.total_vendido)}</strong></div>
+                <div><span class="etiqueta">Costo</span><strong>${dinero(d.ventas.total_costo)}</strong></div>
+                <div><span class="etiqueta">Ganancia de lo vendido</span><strong>${dinero(d.ventas.ganancia_vendida)}</strong></div>
+            </div>
+
+            <h4 class="subtitulo">Cobrado en el período - ${d.cobros.cantidad} ${d.cobros.cantidad === 1 ? 'pago' : 'pagos'}</h4>
+            <div class="venta-totales venta-cobranza">
+                <div><span class="etiqueta">Total cobrado</span><strong>${dinero(d.cobros.total_cobrado)}</strong></div>
+                <div><span class="etiqueta">Ganancia ya cobrada</span><strong>${dinero(d.cobros.ganancia_cobrada)}</strong></div>
+            </div>
+            <p class="nota-resumen">${metodos}</p>
+
+            <h4 class="subtitulo">Resultado</h4>
+            <div class="venta-totales resumen-real ${d.ganancia_real < 0 ? 'negativo' : ''}">
+                <div><span class="etiqueta">Ganancia cobrada</span><strong>${dinero(d.cobros.ganancia_cobrada)}</strong></div>
+                <div><span class="etiqueta">Gastos (${d.gastos.cantidad})</span><strong>- ${dinero(d.gastos.total)}</strong></div>
+                <div><span class="etiqueta">Ganancia real</span><strong>${dinero(d.ganancia_real)}</strong></div>
+            </div>
+            <p class="nota-resumen">La ganancia cobrada es proporcional a lo que entró: si una venta tiene 40% de ganancia y el cliente pagó $1.000, cuentan $400.</p>
+
+            <h4 class="subtitulo">Por cobrar</h4>
+            <div class="venta-totales venta-cobranza">
+                <div><span class="etiqueta">Lo que le deben hoy (total)</span><strong>${dinero(d.por_cobrar)}</strong></div>
+            </div>
+        `;
+    } catch (error) {
+        contenido.innerHTML = '<p class="mensaje-error">Error al cargar el resumen</p>';
+    }
+}
+
+// Eventos del resumen
+['resumen-desde', 'resumen-hasta'].forEach(id => {
+    document.getElementById(id).addEventListener('change', cargarResumen);
+});
+
+document.getElementById('btn-resumen-hoy').addEventListener('click', () => {
+    document.getElementById('resumen-desde').value = hoyLocal();
+    document.getElementById('resumen-hasta').value = hoyLocal();
+    cargarResumen();
+});
+
+document.getElementById('btn-resumen-mes').addEventListener('click', () => {
+    const hoy = hoyLocal();
+    document.getElementById('resumen-desde').value = `${hoy.slice(0, 8)}01`;
+    document.getElementById('resumen-hasta').value = hoy;
+    cargarResumen();
+});
+
+// Inicio es el panel que se ve al abrir el sistema
+cargarResumen();
