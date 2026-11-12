@@ -19,6 +19,7 @@
             <button class="menu-item" data-panel="clientes">Clientes</button>
             <button class="menu-item" data-panel="ventas">Ventas</button>
             <button class="menu-item" data-panel="cobros">Cobros</button>
+            <button class="menu-item" data-panel="gastos">Gastos</button>
         </nav>
 
         <div class="sidebar-pie">
@@ -143,6 +144,39 @@
                 <div id="cobros-deudores" class="tabla-contenedor"></div>
             </div>
         </section>
+        <section id="panel-gastos" class="panel">
+            <div class="panel-encabezado">
+                <h2>Gastos</h2>
+                <button id="btn-nuevo-gasto" class="btn">+ Nuevo gasto</button>
+            </div>
+
+            <div class="tarjeta">
+                <div class="filtros">
+                    <label>Mes
+                        <input type="month" id="gastos-mes" class="input">
+                    </label>
+                </div>
+
+                <div class="venta-totales">
+                    <div><span class="etiqueta">Total del mes</span><strong id="gastos-total-mes">$ 0,00</strong></div>
+                    <div><span class="etiqueta">Cantidad</span><strong id="gastos-cantidad">0 gastos</strong></div>
+                </div>
+
+                <div class="tabla-contenedor">
+                    <table class="tabla">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Descripción</th>
+                            <th class="num">Monto</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabla-gastos"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 <div id="modal-cliente" class="modal hidden">
@@ -245,6 +279,27 @@
         <div class="modal-botones">
             <button type="button" id="btn-cerrar-detalle-venta" class="btn-secundario">Cerrar</button>
         </div>
+    </div>
+</div>
+<div id="modal-gasto" class="modal hidden">
+    <div class="modal-contenido">
+        <h3 id="modal-gasto-titulo">Nuevo gasto</h3>
+        <form id="form-gasto">
+            <label>Descripción *
+                <input type="text" id="gasto-descripcion" class="input" maxlength="200" required>
+            </label>
+            <label>Monto *
+                <input type="number" id="gasto-monto" class="input" min="0.01" step="0.01" required>
+            </label>
+            <label>Fecha
+                <input type="date" id="gasto-fecha" class="input" required>
+            </label>
+            <p id="gasto-error" class="mensaje-error hidden"></p>
+            <div class="modal-botones">
+                <button type="button" id="btn-cancelar-gasto" class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn">Guardar</button>
+            </div>
+        </form>
     </div>
 </div>
 <script src="js/app.js"></script>

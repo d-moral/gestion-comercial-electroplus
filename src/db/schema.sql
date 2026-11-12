@@ -73,3 +73,15 @@ INSERT INTO cuotas (venta_id, numero, vencimiento, monto)
 SELECT v.id, 1, v.fecha, v.total_venta
 FROM ventas v
 WHERE NOT EXISTS (SELECT 1 FROM cuotas q WHERE q.venta_id = v.id);
+
+
+
+CREATE TABLE IF NOT EXISTS gastos (
+                                      id SERIAL PRIMARY KEY,
+                                      descripcion VARCHAR(200) NOT NULL,
+    monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha);

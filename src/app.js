@@ -5,6 +5,7 @@ const clientesRouter = require('./routes/clientes');
 const ventasRouter = require('./routes/ventas');
 const pagosRouter = require('./routes/pagos');
 const cobrosRouter = require('./routes/cobros');
+const gastosRouter = require('./routes/gastos');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,6 +25,7 @@ app.use('/api/clientes', clientesRouter);
 app.use('/api/ventas', ventasRouter);
 app.use('/api/pagos', pagosRouter);
 app.use('/api/cobros', cobrosRouter);
+app.use('/api/gastos', gastosRouter);
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
