@@ -225,3 +225,141 @@ button.btn-secundario {
         padding: 1rem;
     }
 }
+
+/* Utilidades */
+.hidden {
+    display: none !important;
+}
+
+/* Formularios y tablas */
+.input {
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: var(--superficie);
+    font-size: 0.95rem;
+    color: var(--texto);
+}
+
+.input:focus {
+    outline: 2px solid var(--acento);
+    outline-offset: -1px;
+}
+
+.tabla-contenedor {
+    overflow-x: auto;
+    margin-top: 1rem;
+}
+
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+}
+
+.tabla th {
+    text-align: left;
+    padding: 0.6rem 0.75rem;
+    color: var(--texto-suave);
+    font-weight: 600;
+    border-bottom: 1px solid var(--borde);
+}
+
+.tabla td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--borde);
+}
+
+.tabla td.vacio {
+    text-align: center;
+    color: var(--texto-suave);
+    padding: 1.5rem;
+}
+
+.tabla .acciones {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.btn-link {
+    background: none;
+    border: none;
+    color: var(--acento-oscuro);
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 0.2rem 0.4rem;
+}
+
+.btn-link:hover {
+    text-decoration: underline;
+}
+
+.btn-link.peligro {
+    color: var(--error);
+}
+
+.paginacion {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    font-size: 0.9rem;
+    color: var(--texto-suave);
+}
+
+.paginacion button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Modal */
+.modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(28, 25, 23, 0.5);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+    z-index: 100;
+}
+
+.modal-contenido {
+    background: var(--superficie);
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 440px;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+
+.modal-contenido h3 {
+    margin-bottom: 1rem;
+}
+
+.modal-contenido label {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+    margin-bottom: 0.75rem;
+}
+
+.modal-contenido label .input {
+    margin-top: 0.25rem;
+}
+
+.modal-botones {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.mensaje-error {
+    color: var(--error);
+    font-size: 0.88rem;
+    margin-top: 0.25rem;
+}
