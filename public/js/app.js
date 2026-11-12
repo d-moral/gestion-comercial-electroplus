@@ -9,6 +9,7 @@ function mostrarPanel(nombre) {
 
     if (nombre === 'clientes') cargarClientes();
     if (nombre === 'ventas') cargarVentas();
+    if (nombre === 'cobros') cargarCobros();
 }
 
 document.querySelectorAll('.menu-item').forEach(btn => {
@@ -790,4 +791,140 @@ document.getElementById('detalle-venta-cuerpo').addEventListener('submit', (e) =
 document.getElementById('detalle-venta-cuerpo').addEventListener('click', (e) => {
     const boton = e.target.closest('button[data-accion="anular-pago"]');
     if (boton) anularPago(parseInt(boton.dataset.id, 10));
+});
+
+
+
+// ============================================================
+// COBROS (agenda y deudores)
+// ============================================================
+function textoDias(cantidad) {
+    return `${cantidad} ${cantidad === 1 ? 'día' : 'días'}`;
+}
+
+function cuandoVence(f, tipo) {
+    if (tipo === 'atrasadas') return `<span class="atraso">${textoDias(f.dias)} de atraso</span>`;
+    if (tipo === 'hoy') return 'Hoy';
+    return `En ${textoDias(-f.dias)}`;
+}
+
+function tablaAgenda(cuotas, tipo, mensajeVacio) {
+    if (cuotas.length === 0) {
+        return `<p class="vacio-simple">${mensajeVacio}</p>`;
+    }
+
+    const filas = cuotas.map(f => `
+        <tr>
+            <td>${escaparHtml(f.cliente_nombre)}</td>
+            <td>${escaparHtml(f.cliente_telefono || '-')}</td>
+            <td>Venta #${f.venta_id} (cuota ${f.numero}/${f.total_cuotas})</td>
+            <td>${formatearFecha(f.vencimiento)}</td>
+            <td class="num">${dinero(f.saldo)}</td>
+            <td>${cuandoVence(f, tipo)}</td>
+            <td class="acciones">
+                <button class="btn-link" data-accion="ver-venta" data-id="${f.venta_id}">Ver / cobrar</button>
+            </td>
+        </tr>
+    `).join('');
+
+    return `
+        <table class="tabla">
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Teléfono</th>
+                <th>Venta</th>
+                <th>Vence</th>
+                <th class="num">Saldo</th>
+                <th>Estado</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+        </table>`;
+}
+
+function tablaDeudores(clientes) {
+    if (clientes.length === 0) {
+        return '<p class="vacio-simple">Nadie tiene deuda pendiente</p>';
+    }
+
+    const filas = clientes.map(c => `
+        <tr>
+            <td>${escaparHtml(c.cliente_nombre)}</td>
+            <td>${escaparHtml(c.cliente_telefono || '-')}</td>
+            <td class="num">${c.ventas_con_deuda}</td>
+            <td class="num">${dinero(c.deuda)}</td>
+            <td class="num">${c.vencido > 0 ? `<span class="atraso">${dinero(c.vencido)}</span>` : dinero(0)}</td>
+            <td>${c.dias_atraso > 0 ? `<span class="atraso">${textoDias(c.dias_atraso)}</span>` : 'Al día'}</td>
+        </tr>
+    `).join('');
+
+    return `
+        <table class="tabla">
+            <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Teléfono</th>
+                <th class="num">Ventas</th>
+                <th class="num">Debe en total</th>
+                <th class="num">Vencido</th>
+                <th>Mayor atraso</th>
+            </tr>
+            </thead>
+            <tbody>${filas}</tbody>
+        </table>`;
+}
+
+async function cargarCobros() {
+    const resumen = document.getElementById('cobros-resumen');
+    try {
+        const [resAgenda, resDeudores] = await Promise.all([
+            fetch('/api/cobros/agenda'),
+            fetch('/api/cobros/deudores')
+        ]);
+        if (!resAgenda.ok || !resDeudores.ok) throw new Error('Error al cargar');
+
+        const agenda = await resAgenda.json();
+        const deudores = await resDeudores.json();
+
+        resumen.innerHTML = `
+            <div><span class="etiqueta">Total por cobrar</span><strong>${dinero(deudores.total_deuda)}</strong></div>
+            <div><span class="etiqueta">Vencido</span><strong>${dinero(agenda.atrasadas.total)}</strong></div>
+            <div><span class="etiqueta">Vence hoy</span><strong>${dinero(agenda.vencen_hoy.total)}</strong></div>
+            <div><span class="etiqueta">Próximos 7 días</span><strong>${dinero(agenda.proximos_7_dias.total)}</strong></div>
+        `;
+
+        document.getElementById('cobros-total-atrasadas').textContent = dinero(agenda.atrasadas.total);
+        document.getElementById('cobros-total-hoy').textContent = dinero(agenda.vencen_hoy.total);
+        document.getElementById('cobros-total-semana').textContent = dinero(agenda.proximos_7_dias.total);
+        document.getElementById('cobros-total-deudores').textContent = dinero(deudores.total_deuda);
+
+        document.getElementById('cobros-atrasadas').innerHTML =
+            tablaAgenda(agenda.atrasadas.cuotas, 'atrasadas', 'No hay cuotas atrasadas');
+        document.getElementById('cobros-hoy').innerHTML =
+            tablaAgenda(agenda.vencen_hoy.cuotas, 'hoy', 'No hay cuotas que venzan hoy');
+        document.getElementById('cobros-semana').innerHTML =
+            tablaAgenda(agenda.proximos_7_dias.cuotas, 'semana', 'No hay cuotas que venzan en los próximos 7 días');
+        document.getElementById('cobros-deudores').innerHTML = tablaDeudores(deudores.clientes);
+    } catch (error) {
+        resumen.innerHTML = '<span class="mensaje-error">Error al cargar los cobros</span>';
+    }
+}
+
+// Eventos de cobros
+document.getElementById('btn-actualizar-cobros').addEventListener('click', cargarCobros);
+
+document.getElementById('panel-cobros').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion="ver-venta"]');
+    if (boton) abrirDetalleVenta(parseInt(boton.dataset.id, 10));
+});
+
+// Al cerrar el detalle de una venta desde Cobros, se refresca la agenda (puede haber un pago nuevo)
+function refrescarCobrosSiCorresponde() {
+    if (document.getElementById('panel-cobros').classList.contains('active')) cargarCobros();
+}
+document.getElementById('btn-cerrar-detalle-venta').addEventListener('click', refrescarCobrosSiCorresponde);
+document.getElementById('modal-detalle-venta').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-detalle-venta') refrescarCobrosSiCorresponde();
 });

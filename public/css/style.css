@@ -551,3 +551,39 @@ button.btn-secundario {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* Cobros */
+.cobros-resumen {
+    margin-top: 0;
+    margin-bottom: 0.5rem;
+}
+
+.bloque-cobros {
+    margin-top: 1rem;
+}
+
+.bloque-titulo {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 1.05rem;
+}
+
+.bloque-titulo span {
+    font-size: 0.95rem;
+    color: var(--texto-suave);
+    font-weight: 600;
+}
+
+.atraso {
+    color: var(--error);
+    font-weight: 600;
+}
+
+
+.vacio-simple {
+    color: var(--texto-suave);
+    font-size: 0.9rem;
+    padding: 0.75rem 0;
+}

@@ -18,6 +18,7 @@
             <button class="menu-item active" data-panel="inicio">Inicio</button>
             <button class="menu-item" data-panel="clientes">Clientes</button>
             <button class="menu-item" data-panel="ventas">Ventas</button>
+            <button class="menu-item" data-panel="cobros">Cobros</button>
         </nav>
 
         <div class="sidebar-pie">
@@ -112,6 +113,34 @@
                     <span id="ventas-pagina-info"></span>
                     <button id="ventas-siguiente" class="btn-secundario">Siguiente</button>
                 </div>
+            </div>
+        </section>
+        <section id="panel-cobros" class="panel">
+            <div class="panel-encabezado">
+                <h2>Cobros</h2>
+                <button id="btn-actualizar-cobros" class="btn-secundario">Actualizar</button>
+            </div>
+
+            <div id="cobros-resumen" class="venta-totales cobros-resumen"></div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Atrasadas <span id="cobros-total-atrasadas"></span></h3>
+                <div id="cobros-atrasadas" class="tabla-contenedor"></div>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Vencen hoy <span id="cobros-total-hoy"></span></h3>
+                <div id="cobros-hoy" class="tabla-contenedor"></div>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Próximos 7 días <span id="cobros-total-semana"></span></h3>
+                <div id="cobros-semana" class="tabla-contenedor"></div>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Deudores <span id="cobros-total-deudores"></span></h3>
+                <div id="cobros-deudores" class="tabla-contenedor"></div>
             </div>
         </section>
     </main>
