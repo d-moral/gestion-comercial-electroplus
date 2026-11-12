@@ -97,6 +97,7 @@
                             <th>Fecha</th>
                             <th>Cliente</th>
                             <th class="num">Total</th>
+                            <th class="num">Saldo</th>
                             <th class="num">Ganancia</th>
                             <th>Estado</th>
                             <th></th>
@@ -175,7 +176,23 @@
             <label class="label-obs">Observaciones
                 <textarea id="venta-observaciones" class="input" rows="2"></textarea>
             </label>
-
+            <h4 class="subtitulo">Plan de pago</h4>
+            <div class="fila-plan">
+                <label>Frecuencia
+                    <select id="venta-frecuencia" class="input">
+                        <option value="semanal">Semanal</option>
+                        <option value="quincenal">Quincenal</option>
+                        <option value="mensual" selected>Mensual</option>
+                    </select>
+                </label>
+                <label>Cantidad de cuotas
+                    <input type="number" id="venta-cuotas" class="input" min="1" max="60" step="1" value="1">
+                </label>
+                <label>Primer vencimiento
+                    <input type="date" id="venta-primer-vencimiento" class="input" required>
+                </label>
+            </div>
+            <p id="venta-vista-cuotas" class="vista-cuotas"></p>
             <div class="venta-totales">
                 <div><span class="etiqueta">Total vendido</span><strong id="venta-total-venta">$ 0,00</strong></div>
                 <div><span class="etiqueta">Costo</span><strong id="venta-total-costo">$ 0,00</strong></div>
