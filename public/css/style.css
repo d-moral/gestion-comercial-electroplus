@@ -593,3 +593,23 @@ button.btn-secundario {
     font-weight: 600;
     color: var(--texto-suave);
 }
+
+
+/* Resumen */
+.venta-totales.resumen-real {
+    background: #dcfce7;
+}
+
+.venta-totales.resumen-real.negativo {
+    background: #fee2e2;
+}
+
+.venta-totales.resumen-real strong {
+    font-size: 1.4rem;
+}
+
+.nota-resumen {
+    margin-top: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--texto-suave);
+}
