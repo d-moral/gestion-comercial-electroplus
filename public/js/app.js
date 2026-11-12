@@ -10,6 +10,7 @@ function mostrarPanel(nombre) {
     if (nombre === 'clientes') cargarClientes();
     if (nombre === 'ventas') cargarVentas();
     if (nombre === 'cobros') cargarCobros();
+    if (nombre === 'gastos') cargarGastos();
 }
 
 document.querySelectorAll('.menu-item').forEach(btn => {
@@ -927,4 +928,171 @@ function refrescarCobrosSiCorresponde() {
 document.getElementById('btn-cerrar-detalle-venta').addEventListener('click', refrescarCobrosSiCorresponde);
 document.getElementById('modal-detalle-venta').addEventListener('click', (e) => {
     if (e.target.id === 'modal-detalle-venta') refrescarCobrosSiCorresponde();
+});
+
+
+
+// ============================================================
+// GASTOS
+// ============================================================
+const estadoGastos = {
+    mes: '',
+    lista: [],
+    editandoId: null
+};
+
+async function cargarGastos() {
+    if (!estadoGastos.mes) estadoGastos.mes = hoyLocal().slice(0, 7);
+    document.getElementById('gastos-mes').value = estadoGastos.mes;
+
+    const tbody = document.getElementById('tabla-gastos');
+    try {
+        const res = await fetch(`/api/gastos?mes=${estadoGastos.mes}`);
+        if (!res.ok) throw new Error('Error al cargar');
+        const data = await res.json();
+
+        estadoGastos.lista = data.gastos;
+
+        document.getElementById('gastos-total-mes').textContent = dinero(data.total);
+        document.getElementById('gastos-cantidad').textContent =
+            `${data.gastos.length} ${data.gastos.length === 1 ? 'gasto' : 'gastos'}`;
+
+        if (data.gastos.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="vacio">No hay gastos en este mes</td></tr>';
+            return;
+        }
+
+        // La lista viene ordenada por fecha; al terminar cada día con más de un gasto, se agrega su subtotal
+        let html = '';
+        data.gastos.forEach((g, i) => {
+            html += `
+                <tr>
+                    <td>${formatearFecha(g.fecha)}</td>
+                    <td>${escaparHtml(g.descripcion)}</td>
+                    <td class="num">${dinero(g.monto)}</td>
+                    <td class="acciones">
+                        <button class="btn-link" data-accion="editar" data-id="${g.id}">Editar</button>
+                        <button class="btn-link peligro" data-accion="eliminar" data-id="${g.id}">Eliminar</button>
+                    </td>
+                </tr>`;
+
+            const siguiente = data.gastos[i + 1];
+            if (!siguiente || siguiente.fecha !== g.fecha) {
+                const delDia = data.gastos.filter(x => x.fecha === g.fecha);
+                if (delDia.length > 1) {
+                    const subtotal = delDia.reduce((acc, x) => acc + Math.round(x.monto * 100), 0) / 100;
+                    html += `
+                        <tr class="fila-subtotal">
+                            <td colspan="2">Subtotal ${formatearFecha(g.fecha)}</td>
+                            <td class="num">${dinero(subtotal)}</td>
+                            <td></td>
+                        </tr>`;
+                }
+            }
+        });
+        tbody.innerHTML = html;
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="4" class="vacio">Error al cargar los gastos</td></tr>';
+    }
+}
+
+function abrirModalGasto(gasto = null) {
+    estadoGastos.editandoId = gasto ? gasto.id : null;
+
+    document.getElementById('modal-gasto-titulo').textContent = gasto ? 'Editar gasto' : 'Nuevo gasto';
+    document.getElementById('gasto-descripcion').value = gasto?.descripcion || '';
+    document.getElementById('gasto-monto').value = gasto ? gasto.monto : '';
+    document.getElementById('gasto-fecha').value = gasto?.fecha || hoyLocal();
+
+    const error = document.getElementById('gasto-error');
+    error.classList.add('hidden');
+    error.textContent = '';
+
+    document.getElementById('modal-gasto').classList.remove('hidden');
+    document.getElementById('gasto-descripcion').focus();
+}
+
+function cerrarModalGasto() {
+    document.getElementById('modal-gasto').classList.add('hidden');
+    estadoGastos.editandoId = null;
+}
+
+async function guardarGasto(evento) {
+    evento.preventDefault();
+
+    const cuerpo = {
+        descripcion: document.getElementById('gasto-descripcion').value,
+        monto: document.getElementById('gasto-monto').value,
+        fecha: document.getElementById('gasto-fecha').value
+    };
+
+    const editando = estadoGastos.editandoId !== null;
+    const url = editando ? `/api/gastos/${estadoGastos.editandoId}` : '/api/gastos';
+    const error = document.getElementById('gasto-error');
+
+    try {
+        const res = await fetch(url, {
+            method: editando ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            error.textContent = data.error || 'No se pudo guardar el gasto';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        cerrarModalGasto();
+        // Si el gasto es de otro mes, se muestra ese mes para que se vea lo que se cargó
+        estadoGastos.mes = data.fecha.slice(0, 7);
+        cargarGastos();
+    } catch (e) {
+        error.textContent = 'Error de conexión con el servidor';
+        error.classList.remove('hidden');
+    }
+}
+
+async function eliminarGasto(id) {
+    const gasto = estadoGastos.lista.find(g => g.id === id);
+    if (!gasto) return;
+
+    if (!confirm(`¿Eliminar el gasto "${gasto.descripcion}" por ${dinero(gasto.monto)}?`)) return;
+
+    try {
+        const res = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        cargarGastos();
+    } catch (error) {
+        alert('No se pudo eliminar el gasto');
+    }
+}
+
+// Eventos de gastos
+document.getElementById('btn-nuevo-gasto').addEventListener('click', () => abrirModalGasto());
+document.getElementById('btn-cancelar-gasto').addEventListener('click', cerrarModalGasto);
+document.getElementById('form-gasto').addEventListener('submit', guardarGasto);
+
+document.getElementById('modal-gasto').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-gasto') cerrarModalGasto();
+});
+
+document.getElementById('gastos-mes').addEventListener('change', (e) => {
+    if (!e.target.value) return;
+    estadoGastos.mes = e.target.value;
+    cargarGastos();
+});
+
+document.getElementById('tabla-gastos').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion]');
+    if (!boton) return;
+
+    const id = parseInt(boton.dataset.id, 10);
+    if (boton.dataset.accion === 'editar') {
+        const gasto = estadoGastos.lista.find(g => g.id === id);
+        if (gasto) abrirModalGasto(gasto);
+    } else if (boton.dataset.accion === 'eliminar') {
+        eliminarGasto(id);
+    }
 });

@@ -587,3 +587,9 @@ button.btn-secundario {
     font-size: 0.9rem;
     padding: 0.75rem 0;
 }
+/* Gastos */
+.tabla tr.fila-subtotal td {
+    background: var(--fondo);
+    font-weight: 600;
+    color: var(--texto-suave);
+}
