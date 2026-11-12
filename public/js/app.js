@@ -266,7 +266,7 @@ async function cargarVentas() {
         estadoVentas.lista = data.ventas;
 
         if (data.ventas.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="6" class="vacio">No hay ventas para mostrar</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="7" class="vacio">No hay ventas para mostrar</td></tr>';
         } else {
             tbody.innerHTML = data.ventas.map(v => {
                 const anulada = v.estado === 'anulada';
@@ -275,6 +275,7 @@ async function cargarVentas() {
                     <td>${formatearFecha(v.fecha)}</td>
                     <td>${escaparHtml(v.cliente_nombre)}</td>
                     <td class="num">${dinero(v.total_venta)}</td>
+                    <td class="num">${anulada ? '-' : dinero(v.saldo)}</td>
                     <td class="num">${dinero(v.ganancia)}</td>
                     <td><span class="badge ${v.estado}">${anulada ? 'Anulada' : 'Activa'}</span></td>
                     <td class="acciones">
@@ -290,7 +291,7 @@ async function cargarVentas() {
         document.getElementById('ventas-anterior').disabled = data.pagina <= 1;
         document.getElementById('ventas-siguiente').disabled = data.pagina >= data.total_paginas;
     } catch (error) {
-        tbody.innerHTML = '<tr><td colspan="6" class="vacio">Error al cargar las ventas</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="vacio">Error al cargar las ventas</td></tr>';
     }
 }
 
@@ -326,6 +327,24 @@ function recalcularTotalesVenta() {
     document.getElementById('venta-total-venta').textContent = dinero(venta);
     document.getElementById('venta-total-costo').textContent = dinero(costo);
     document.getElementById('venta-total-ganancia').textContent = dinero(venta - costo);
+
+    // Vista previa de las cuotas
+    const vista = document.getElementById('venta-vista-cuotas');
+    const cuotas = parseInt(document.getElementById('venta-cuotas').value, 10) || 1;
+    const totalCent = Math.round(venta * 100);
+    if (totalCent <= 0 || cuotas < 1) {
+        vista.textContent = '';
+        return;
+    }
+    const base = Math.floor(totalCent / cuotas);
+    const ultima = base + (totalCent - base * cuotas);
+    if (cuotas === 1) {
+        vista.textContent = `1 cuota de ${dinero(totalCent / 100)}`;
+    } else if (ultima === base) {
+        vista.textContent = `${cuotas} cuotas de ${dinero(base / 100)}`;
+    } else {
+        vista.textContent = `${cuotas - 1} cuotas de ${dinero(base / 100)} y una última de ${dinero(ultima / 100)}`;
+    }
 }
 
 async function cargarOpcionesClientesVenta(busqueda = '') {
@@ -349,6 +368,8 @@ async function cargarOpcionesClientesVenta(busqueda = '') {
 function abrirModalVenta() {
     document.getElementById('form-venta').reset();
     document.getElementById('venta-fecha').value = hoyLocal();
+    document.getElementById('venta-primer-vencimiento').dataset.manual = 'false';
+    sugerirPrimerVencimiento();
     document.getElementById('venta-items').innerHTML = '';
     agregarItemVenta();
     recalcularTotalesVenta();
@@ -396,6 +417,9 @@ async function guardarVenta(evento) {
         cliente_id: document.getElementById('venta-cliente').value,
         fecha: document.getElementById('venta-fecha').value,
         observaciones: document.getElementById('venta-observaciones').value,
+        frecuencia: document.getElementById('venta-frecuencia').value,
+        cantidad_cuotas: document.getElementById('venta-cuotas').value,
+        primer_vencimiento: document.getElementById('venta-primer-vencimiento').value,
         items
     };
 
@@ -421,7 +445,14 @@ async function guardarVenta(evento) {
 }
 
 // ---------- Detalle y anulación ----------
+function etiquetaCuota(c) {
+    if (c.estado === 'pagada') return 'Pagada';
+    if (c.estado === 'vencida') return `Vencida (${c.dias_atraso} d)`;
+    return 'Pendiente';
+}
+
 async function abrirDetalleVenta(id) {
+    estadoVentas.detalleId = id;
     const cuerpo = document.getElementById('detalle-venta-cuerpo');
     cuerpo.innerHTML = '<p class="vacio">Cargando...</p>';
     document.getElementById('modal-detalle-venta').classList.remove('hidden');
@@ -430,8 +461,9 @@ async function abrirDetalleVenta(id) {
         const res = await fetch(`/api/ventas/${id}`);
         if (!res.ok) throw new Error('Error al cargar');
         const v = await res.json();
+        const activa = v.estado === 'activa';
 
-        const filas = v.items.map(item => `
+        const filasItems = v.items.map(item => `
             <tr>
                 <td>${escaparHtml(item.descripcion)}</td>
                 <td class="num">${item.cantidad}</td>
@@ -441,12 +473,64 @@ async function abrirDetalleVenta(id) {
             </tr>
         `).join('');
 
+        const filasCuotas = v.cuotas.map(c => `
+            <tr>
+                <td>${c.numero}</td>
+                <td>${formatearFecha(c.vencimiento)}</td>
+                <td class="num">${dinero(c.monto)}</td>
+                <td class="num">${dinero(c.pagado)}</td>
+                <td class="num">${dinero(c.saldo)}</td>
+                <td><span class="badge ${c.estado}">${etiquetaCuota(c)}</span></td>
+            </tr>
+        `).join('');
+
+        const filasPagos = v.pagos.length === 0
+            ? '<tr><td colspan="5" class="vacio">Todavía no hay pagos registrados</td></tr>'
+            : v.pagos.map(p => `
+            <tr class="${p.anulado ? 'fila-anulada' : ''}">
+                <td>${formatearFecha(p.fecha)}</td>
+                <td class="num">${dinero(p.monto)}</td>
+                <td>${escaparHtml(p.metodo)}</td>
+                <td>${escaparHtml(p.observaciones || '')}</td>
+                <td class="acciones">${p.anulado
+                ? 'Anulado'
+                : (activa ? `<button class="btn-link peligro" data-accion="anular-pago" data-id="${p.id}">Anular</button>` : '')}</td>
+            </tr>
+        `).join('');
+
+        const proxima = v.cuotas.find(c => c.saldo > 0);
+        const formularioPago = (activa && v.saldo > 0) ? `
+            <form id="form-pago" class="form-pago" data-venta-id="${v.id}">
+                <h4 class="subtitulo">Registrar pago</h4>
+                <div class="fila-pago">
+                    <label>Monto *
+                        <input type="number" id="pago-monto" class="input" min="0.01" step="0.01"
+                               value="${proxima ? proxima.saldo.toFixed(2) : ''}" required>
+                    </label>
+                    <label>Fecha
+                        <input type="date" id="pago-fecha" class="input" value="${hoyLocal()}" required>
+                    </label>
+                    <label>Forma de pago
+                        <select id="pago-metodo" class="input">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </label>
+                    <label>Observaciones
+                        <input type="text" id="pago-obs" class="input" maxlength="200">
+                    </label>
+                </div>
+                <p id="pago-error" class="mensaje-error hidden"></p>
+                <button type="submit" class="btn">Registrar pago</button>
+            </form>` : '';
+
         cuerpo.innerHTML = `
             <div class="detalle-grid">
                 <div><span class="etiqueta">Cliente</span>${escaparHtml(v.cliente_nombre)}</div>
                 <div><span class="etiqueta">Fecha</span>${formatearFecha(v.fecha)}</div>
                 <div><span class="etiqueta">Teléfono</span>${escaparHtml(v.cliente_telefono || '-')}</div>
-                <div><span class="etiqueta">Estado</span><span class="badge ${v.estado}">${v.estado === 'anulada' ? 'Anulada' : 'Activa'}</span></div>
+                <div><span class="etiqueta">Estado</span><span class="badge ${v.estado}">${activa ? 'Activa' : 'Anulada'}</span></div>
             </div>
             ${v.observaciones ? `<p class="detalle-obs">${escaparHtml(v.observaciones)}</p>` : ''}
             <div class="tabla-contenedor">
@@ -460,7 +544,7 @@ async function abrirDetalleVenta(id) {
                         <th class="num">Subtotal</th>
                     </tr>
                     </thead>
-                    <tbody>${filas}</tbody>
+                    <tbody>${filasItems}</tbody>
                 </table>
             </div>
             <div class="venta-totales">
@@ -468,6 +552,45 @@ async function abrirDetalleVenta(id) {
                 <div><span class="etiqueta">Costo</span><strong>${dinero(v.total_costo)}</strong></div>
                 <div><span class="etiqueta">Ganancia</span><strong>${dinero(v.ganancia)}</strong></div>
             </div>
+            <div class="venta-totales venta-cobranza">
+                <div><span class="etiqueta">Pagado</span><strong>${dinero(v.total_pagado)}</strong></div>
+                <div><span class="etiqueta">Saldo</span><strong>${activa ? dinero(v.saldo) : '-'}</strong></div>
+                <div><span class="etiqueta">Atraso</span><strong>${!activa ? '-' : (v.dias_atraso > 0 ? `${v.dias_atraso} días` : 'Al día')}</strong></div>
+            </div>
+
+            <h4 class="subtitulo">Cuotas (${v.cuotas_pagadas} de ${v.cuotas.length} pagadas, ${v.frecuencia})</h4>
+            <div class="tabla-contenedor">
+                <table class="tabla">
+                    <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Vencimiento</th>
+                        <th class="num">Monto</th>
+                        <th class="num">Pagado</th>
+                        <th class="num">Saldo</th>
+                        <th>Estado</th>
+                    </tr>
+                    </thead>
+                    <tbody>${filasCuotas}</tbody>
+                </table>
+            </div>
+
+            <h4 class="subtitulo">Pagos</h4>
+            <div class="tabla-contenedor">
+                <table class="tabla">
+                    <thead>
+                    <tr>
+                        <th>Fecha</th>
+                        <th class="num">Monto</th>
+                        <th>Forma</th>
+                        <th>Observaciones</th>
+                        <th></th>
+                    </tr>
+                    </thead>
+                    <tbody>${filasPagos}</tbody>
+                </table>
+            </div>
+            ${formularioPago}
         `;
     } catch (error) {
         cuerpo.innerHTML = '<p class="vacio">No se pudo cargar la venta</p>';
@@ -482,7 +605,11 @@ async function anularVenta(id) {
 
     try {
         const res = await fetch(`/api/ventas/${id}/anular`, { method: 'PATCH' });
-        if (!res.ok) throw new Error('Error al anular');
+        if (!res.ok) {
+            const data = await res.json();
+            alert(data.error || 'No se pudo anular la venta');
+            return;
+        }
         cargarVentas();
     } catch (error) {
         alert('No se pudo anular la venta');
@@ -561,4 +688,106 @@ document.getElementById('btn-limpiar-filtros-ventas').addEventListener('click', 
     document.getElementById('filtro-ventas-hasta').value = '';
     document.getElementById('filtro-ventas-estado').value = '';
     aplicarFiltrosVentas();
+});
+
+// ============================================================
+// CUOTAS Y PAGOS
+// ============================================================
+function sumarDiasIso(iso, dias) {
+    const [a, m, d] = iso.split('-').map(Number);
+    return new Date(Date.UTC(a, m - 1, d + dias)).toISOString().slice(0, 10);
+}
+
+function sumarMesesIso(iso, meses) {
+    const [a, m, d] = iso.split('-').map(Number);
+    const destino = new Date(Date.UTC(a, m - 1 + meses, 1));
+    const ultimoDia = new Date(Date.UTC(destino.getUTCFullYear(), destino.getUTCMonth() + 1, 0)).getUTCDate();
+    destino.setUTCDate(Math.min(d, ultimoDia));
+    return destino.toISOString().slice(0, 10);
+}
+
+// Propone el primer vencimiento un período después de la venta (si no lo tocaste a mano)
+function sugerirPrimerVencimiento() {
+    const campo = document.getElementById('venta-primer-vencimiento');
+    if (campo.dataset.manual === 'true') return;
+
+    const fecha = document.getElementById('venta-fecha').value || hoyLocal();
+    const frecuencia = document.getElementById('venta-frecuencia').value;
+
+    if (frecuencia === 'semanal') campo.value = sumarDiasIso(fecha, 7);
+    else if (frecuencia === 'quincenal') campo.value = sumarDiasIso(fecha, 15);
+    else campo.value = sumarMesesIso(fecha, 1);
+}
+
+async function registrarPago(evento) {
+    evento.preventDefault();
+    const form = evento.target;
+    const error = document.getElementById('pago-error');
+    error.classList.add('hidden');
+
+    const cuerpo = {
+        venta_id: form.dataset.ventaId,
+        monto: document.getElementById('pago-monto').value,
+        fecha: document.getElementById('pago-fecha').value,
+        metodo: document.getElementById('pago-metodo').value,
+        observaciones: document.getElementById('pago-obs').value
+    };
+
+    try {
+        const res = await fetch('/api/pagos', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            error.textContent = data.error || 'No se pudo registrar el pago';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        abrirDetalleVenta(estadoVentas.detalleId);
+        cargarVentas();
+    } catch (e) {
+        error.textContent = 'Error de conexión con el servidor';
+        error.classList.remove('hidden');
+    }
+}
+
+async function anularPago(id) {
+    if (!confirm('¿Anular este pago? El saldo de la venta vuelve a subir.')) return;
+
+    try {
+        const res = await fetch(`/api/pagos/${id}/anular`, { method: 'PATCH' });
+        if (!res.ok) {
+            const data = await res.json();
+            alert(data.error || 'No se pudo anular el pago');
+            return;
+        }
+        abrirDetalleVenta(estadoVentas.detalleId);
+        cargarVentas();
+    } catch (error) {
+        alert('No se pudo anular el pago');
+    }
+}
+
+// Eventos del plan de pago (modal de nueva venta)
+document.getElementById('venta-fecha').addEventListener('change', sugerirPrimerVencimiento);
+document.getElementById('venta-frecuencia').addEventListener('change', () => {
+    sugerirPrimerVencimiento();
+    recalcularTotalesVenta();
+});
+document.getElementById('venta-cuotas').addEventListener('input', recalcularTotalesVenta);
+document.getElementById('venta-primer-vencimiento').addEventListener('input', (e) => {
+    e.target.dataset.manual = 'true';
+});
+
+// Eventos del detalle de venta (pagos)
+document.getElementById('detalle-venta-cuerpo').addEventListener('submit', (e) => {
+    if (e.target.id === 'form-pago') registrarPago(e);
+});
+document.getElementById('detalle-venta-cuerpo').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion="anular-pago"]');
+    if (boton) anularPago(parseInt(boton.dataset.id, 10));
 });
