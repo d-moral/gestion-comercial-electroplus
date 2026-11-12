@@ -2,6 +2,7 @@ const express = require('express');
 require('dotenv').config();
 const pool = require('./db');
 const clientesRouter = require('./routes/clientes');
+const ventasRouter = require('./routes/ventas');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,6 +19,7 @@ app.get('/health', async (req, res) => {
     }
 });
 app.use('/api/clientes', clientesRouter);
+app.use('/api/ventas', ventasRouter);
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
 });

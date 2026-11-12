@@ -363,3 +363,143 @@ button.btn-secundario {
     font-size: 0.88rem;
     margin-top: 0.25rem;
 }
+
+
+/* Ventas */
+.modal-contenido.modal-ancho {
+    max-width: 780px;
+}
+
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+}
+
+.filtros label {
+    font-size: 0.85rem;
+    color: var(--texto-suave);
+}
+
+.filtros label .input {
+    margin-top: 0.25rem;
+    width: auto;
+}
+
+.tabla th.num,
+.tabla td.num {
+    text-align: right;
+    white-space: nowrap;
+}
+
+.tabla tr.fila-anulada td {
+    color: var(--texto-suave);
+    text-decoration: line-through;
+}
+
+.tabla tr.fila-anulada td.acciones {
+    text-decoration: none;
+}
+
+.badge {
+    display: inline-block;
+    padding: 0.15rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    background: #dcfce7;
+    color: var(--ok);
+}
+
+.badge.anulada {
+    background: #fee2e2;
+    color: var(--error);
+}
+
+.fila-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr 160px;
+    gap: 0.75rem;
+}
+
+.subtitulo {
+    margin: 0.5rem 0 0.5rem;
+    font-size: 0.95rem;
+}
+
+.item-fila {
+    display: grid;
+    grid-template-columns: 1fr 80px 120px 140px auto;
+    gap: 0.5rem;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.item-encabezado {
+    font-size: 0.78rem;
+    color: var(--texto-suave);
+    margin-bottom: 0.25rem;
+}
+
+.label-obs {
+    margin-top: 0.75rem;
+}
+
+.venta-totales {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    margin-top: 1rem;
+    padding: 0.85rem 1rem;
+    background: var(--acento-suave);
+    border-radius: 8px;
+}
+
+.venta-totales > div {
+    display: flex;
+    flex-direction: column;
+}
+
+.venta-totales strong {
+    font-size: 1.15rem;
+}
+
+.etiqueta {
+    display: block;
+    font-size: 0.78rem;
+    color: var(--texto-suave);
+}
+
+.detalle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 0.75rem;
+}
+
+.detalle-obs {
+    font-size: 0.9rem;
+    color: var(--texto-suave);
+    margin-bottom: 0.5rem;
+}
+
+@media (max-width: 800px) {
+    .fila-form {
+        grid-template-columns: 1fr;
+    }
+
+    .item-encabezado {
+        display: none;
+    }
+
+    .item-fila {
+        grid-template-columns: 1fr 1fr;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px dashed var(--borde);
+    }
+
+    .item-fila .item-descripcion {
+        grid-column: 1 / -1;
+    }
+}
