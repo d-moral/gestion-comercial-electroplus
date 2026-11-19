@@ -21,6 +21,7 @@
             <button class="menu-item" data-panel="ventas">Ventas</button>
             <button class="menu-item" data-panel="cobros">Cobros</button>
             <button class="menu-item" data-panel="gastos">Gastos</button>
+            <button class="menu-item" data-panel="proveedores">Proveedores</button>
         </nav>
 
         <div class="sidebar-pie">
@@ -188,6 +189,36 @@
                 </div>
             </div>
         </section>
+        <section id="panel-proveedores" class="panel">
+            <div class="panel-encabezado">
+                <h2>Proveedores</h2>
+                <button id="btn-nuevo-proveedor" class="btn">+ Nuevo proveedor</button>
+            </div>
+
+            <div class="tarjeta">
+                <div class="venta-totales">
+                    <div><span class="etiqueta">Proveedores</span><strong id="proveedores-cantidad">0</strong></div>
+                    <div><span class="etiqueta">Pendiente de pago a proveedores</span><strong id="proveedores-pendiente">$ 0,00</strong></div>
+                </div>
+
+                <div class="tabla-contenedor">
+                    <table class="tabla">
+                        <thead>
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>Teléfono</th>
+                            <th class="num">Compras</th>
+                            <th class="num">Total comprado</th>
+                            <th class="num">Pendiente de pago</th>
+                            <th>Última compra</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabla-proveedores"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
     </main>
 </div>
 <div id="modal-cliente" class="modal hidden">
@@ -309,6 +340,86 @@
             <p id="gasto-error" class="mensaje-error hidden"></p>
             <div class="modal-botones">
                 <button type="button" id="btn-cancelar-gasto" class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+<div id="modal-proveedor" class="modal hidden">
+    <div class="modal-contenido">
+        <h3 id="modal-proveedor-titulo">Nuevo proveedor</h3>
+        <form id="form-proveedor">
+            <label>Nombre *
+                <input type="text" id="proveedor-nombre" class="input" maxlength="120" required>
+            </label>
+            <label>Teléfono
+                <input type="text" id="proveedor-telefono" class="input" maxlength="40">
+            </label>
+            <label>Dirección
+                <input type="text" id="proveedor-direccion" class="input" maxlength="200">
+            </label>
+            <label>Notas
+                <textarea id="proveedor-notas" class="input" rows="2"></textarea>
+            </label>
+            <p id="proveedor-error" class="mensaje-error hidden"></p>
+            <div class="modal-botones">
+                <button type="button" id="btn-cancelar-proveedor" class="btn-secundario">Cancelar</button>
+                <button type="submit" class="btn">Guardar</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div id="modal-compras" class="modal hidden">
+    <div class="modal-contenido modal-ancho">
+        <h3 id="modal-compras-titulo">Compras</h3>
+        <div class="venta-totales">
+            <div><span class="etiqueta">Total comprado</span><strong id="compras-total">$ 0,00</strong></div>
+            <div><span class="etiqueta">Pendiente de pago</span><strong id="compras-pendiente">$ 0,00</strong></div>
+        </div>
+        <div class="tabla-contenedor">
+            <table class="tabla">
+                <thead>
+                <tr>
+                    <th>Fecha</th>
+                    <th>Mercadería</th>
+                    <th class="num">Monto</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody id="tabla-compras"></tbody>
+            </table>
+        </div>
+        <div class="modal-botones">
+            <button type="button" id="btn-nueva-compra" class="btn">+ Nueva compra</button>
+            <button type="button" id="btn-cerrar-compras" class="btn-secundario">Cerrar</button>
+        </div>
+    </div>
+</div>
+
+<div id="modal-compra" class="modal hidden">
+    <div class="modal-contenido">
+        <h3 id="modal-compra-titulo">Nueva compra</h3>
+        <form id="form-compra">
+            <label>Mercadería *
+                <input type="text" id="compra-descripcion" class="input" maxlength="300" placeholder="Ej: 10 heladeras, 5 lavarropas" required>
+            </label>
+            <label>Monto total *
+                <input type="number" id="compra-monto" class="input" min="0.01" step="0.01" required>
+            </label>
+            <label>Fecha
+                <input type="date" id="compra-fecha" class="input" required>
+            </label>
+            <label class="label-check">
+                <input type="checkbox" id="compra-pagada" checked> Ya está pagada
+            </label>
+            <label>Observaciones
+                <textarea id="compra-observaciones" class="input" rows="2"></textarea>
+            </label>
+            <p id="compra-error" class="mensaje-error hidden"></p>
+            <div class="modal-botones">
+                <button type="button" id="btn-cancelar-compra" class="btn-secundario">Cancelar</button>
                 <button type="submit" class="btn">Guardar</button>
             </div>
         </form>

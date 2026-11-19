@@ -85,3 +85,32 @@ CREATE TABLE IF NOT EXISTS gastos (
     );
 
 CREATE INDEX IF NOT EXISTS idx_gastos_fecha ON gastos(fecha);
+
+
+
+CREATE TABLE IF NOT EXISTS proveedores (
+                                           id SERIAL PRIMARY KEY,
+                                           nombre VARCHAR(120) NOT NULL,
+    telefono VARCHAR(40),
+    direccion VARCHAR(200),
+    notas TEXT,
+    activo BOOLEAN NOT NULL DEFAULT TRUE,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    actualizado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+CREATE INDEX IF NOT EXISTS idx_proveedores_nombre ON proveedores(nombre);
+
+CREATE TABLE IF NOT EXISTS compras (
+                                       id SERIAL PRIMARY KEY,
+                                       proveedor_id INTEGER NOT NULL REFERENCES proveedores(id),
+    fecha DATE NOT NULL DEFAULT CURRENT_DATE,
+    descripcion VARCHAR(300) NOT NULL,
+    monto NUMERIC(12,2) NOT NULL CHECK (monto > 0),
+    pagada BOOLEAN NOT NULL DEFAULT TRUE,
+    observaciones TEXT,
+    creado_en TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    );
+
+CREATE INDEX IF NOT EXISTS idx_compras_proveedor ON compras(proveedor_id);
+CREATE INDEX IF NOT EXISTS idx_compras_fecha ON compras(fecha);
