@@ -283,6 +283,7 @@ async function cargarVentas() {
                     <td><span class="badge ${v.estado}">${anulada ? 'Anulada' : 'Activa'}</span></td>
                     <td class="acciones">
                         <button class="btn-link" data-accion="ver" data-id="${v.id}">Ver</button>
+                        <button class="btn-link" data-accion="remito" data-id="${v.id}">Remito</button>
                         ${anulada ? '' : `<button class="btn-link peligro" data-accion="anular" data-id="${v.id}">Anular</button>`}
                     </td>
                 </tr>`;
@@ -454,7 +455,10 @@ function etiquetaCuota(c) {
     return 'Pendiente';
 }
 
+let ventaDetalleActual = null;
+
 async function abrirDetalleVenta(id) {
+    ventaDetalleActual = id;
     estadoVentas.detalleId = id;
     const cuerpo = document.getElementById('detalle-venta-cuerpo');
     cuerpo.innerHTML = '<p class="vacio">Cargando...</p>';
@@ -659,6 +663,7 @@ document.getElementById('tabla-ventas').addEventListener('click', (e) => {
 
     const id = parseInt(boton.dataset.id, 10);
     if (boton.dataset.accion === 'ver') abrirDetalleVenta(id);
+    else if (boton.dataset.accion === 'remito') abrirRemito(id);
     else if (boton.dataset.accion === 'anular') anularVenta(id);
 });
 
@@ -1187,3 +1192,14 @@ document.getElementById('btn-resumen-mes').addEventListener('click', () => {
 
 // Inicio es el panel que se ve al abrir el sistema
 cargarResumen();
+
+// ============================================================
+// REMITO (PDF)
+// ============================================================
+function abrirRemito(id) {
+    window.open(`/api/ventas/${id}/remito`, '_blank');
+}
+
+document.getElementById('btn-remito-detalle').addEventListener('click', () => {
+    if (ventaDetalleActual) abrirRemito(ventaDetalleActual);
+});

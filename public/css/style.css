@@ -613,3 +613,11 @@ button.btn-secundario {
     font-size: 0.82rem;
     color: var(--texto-suave);
 }
+
+img.marca-icono {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    background: none;
+    border-radius: 8px;
+}
