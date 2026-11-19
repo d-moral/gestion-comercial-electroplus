@@ -12,6 +12,7 @@ function mostrarPanel(nombre) {
     if (nombre === 'cobros') cargarCobros();
     if (nombre === 'gastos') cargarGastos();
     if (nombre === 'inicio') cargarResumen();
+    if (nombre === 'proveedores') cargarProveedores();
 }
 
 document.querySelectorAll('.menu-item').forEach(btn => {
@@ -1202,4 +1203,323 @@ function abrirRemito(id) {
 
 document.getElementById('btn-remito-detalle').addEventListener('click', () => {
     if (ventaDetalleActual) abrirRemito(ventaDetalleActual);
+});
+
+
+
+// ============================================================
+// PROVEEDORES Y COMPRAS
+// ============================================================
+const estadoProveedores = {
+    lista: [],
+    editandoId: null,
+    proveedorActual: null, // proveedor cuyas compras se están viendo
+    compras: [],
+    editandoCompraId: null
+};
+
+async function cargarProveedores() {
+    const tbody = document.getElementById('tabla-proveedores');
+    try {
+        const res = await fetch('/api/proveedores');
+        if (!res.ok) throw new Error('Error al cargar');
+        const data = await res.json();
+
+        estadoProveedores.lista = data.proveedores;
+        document.getElementById('proveedores-cantidad').textContent = data.proveedores.length;
+        document.getElementById('proveedores-pendiente').textContent = dinero(data.total_pendiente);
+
+        if (data.proveedores.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" class="vacio">Todavía no hay proveedores cargados</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.proveedores.map(p => `
+            <tr>
+                <td>${escaparHtml(p.nombre)}</td>
+                <td>${escaparHtml(p.telefono || '-')}</td>
+                <td class="num">${p.cantidad_compras}</td>
+                <td class="num">${dinero(p.total_comprado)}</td>
+                <td class="num">${p.pendiente_pago > 0 ? `<span class="atraso">${dinero(p.pendiente_pago)}</span>` : dinero(0)}</td>
+                <td>${p.ultima_compra ? formatearFecha(p.ultima_compra) : '-'}</td>
+                <td class="acciones">
+                    <button class="btn-link" data-accion="compras" data-id="${p.id}">Compras</button>
+                    <button class="btn-link" data-accion="editar" data-id="${p.id}">Editar</button>
+                    <button class="btn-link peligro" data-accion="eliminar" data-id="${p.id}">Eliminar</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="7" class="vacio">Error al cargar los proveedores</td></tr>';
+    }
+}
+
+// ---------- Alta / edición de proveedor ----------
+function abrirModalProveedor(proveedor = null) {
+    estadoProveedores.editandoId = proveedor ? proveedor.id : null;
+
+    document.getElementById('modal-proveedor-titulo').textContent = proveedor ? 'Editar proveedor' : 'Nuevo proveedor';
+    document.getElementById('proveedor-nombre').value = proveedor?.nombre || '';
+    document.getElementById('proveedor-telefono').value = proveedor?.telefono || '';
+    document.getElementById('proveedor-direccion').value = proveedor?.direccion || '';
+    document.getElementById('proveedor-notas').value = proveedor?.notas || '';
+
+    const error = document.getElementById('proveedor-error');
+    error.classList.add('hidden');
+    error.textContent = '';
+
+    document.getElementById('modal-proveedor').classList.remove('hidden');
+    document.getElementById('proveedor-nombre').focus();
+}
+
+function cerrarModalProveedor() {
+    document.getElementById('modal-proveedor').classList.add('hidden');
+    estadoProveedores.editandoId = null;
+}
+
+async function guardarProveedor(evento) {
+    evento.preventDefault();
+
+    const cuerpo = {
+        nombre: document.getElementById('proveedor-nombre').value,
+        telefono: document.getElementById('proveedor-telefono').value,
+        direccion: document.getElementById('proveedor-direccion').value,
+        notas: document.getElementById('proveedor-notas').value
+    };
+
+    const editando = estadoProveedores.editandoId !== null;
+    const url = editando ? `/api/proveedores/${estadoProveedores.editandoId}` : '/api/proveedores';
+    const error = document.getElementById('proveedor-error');
+
+    try {
+        const res = await fetch(url, {
+            method: editando ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            error.textContent = data.error || 'No se pudo guardar el proveedor';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        cerrarModalProveedor();
+        cargarProveedores();
+    } catch (e) {
+        error.textContent = 'Error de conexión con el servidor';
+        error.classList.remove('hidden');
+    }
+}
+
+async function eliminarProveedor(id) {
+    const proveedor = estadoProveedores.lista.find(p => p.id === id);
+    if (!proveedor) return;
+
+    let mensaje = `¿Eliminar al proveedor "${proveedor.nombre}"?`;
+    if (proveedor.pendiente_pago > 0) {
+        mensaje += `\n\nOjo: tiene ${dinero(proveedor.pendiente_pago)} pendientes de pago.`;
+    }
+    if (!confirm(mensaje)) return;
+
+    try {
+        const res = await fetch(`/api/proveedores/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        cargarProveedores();
+    } catch (error) {
+        alert('No se pudo eliminar el proveedor');
+    }
+}
+
+// ---------- Compras de un proveedor ----------
+async function cargarComprasProveedor() {
+    const proveedor = estadoProveedores.proveedorActual;
+    if (!proveedor) return;
+
+    const tbody = document.getElementById('tabla-compras');
+    try {
+        const res = await fetch(`/api/proveedores/${proveedor.id}/compras`);
+        if (!res.ok) throw new Error('Error al cargar');
+        const data = await res.json();
+
+        estadoProveedores.compras = data.compras;
+        document.getElementById('compras-total').textContent = dinero(data.total);
+        document.getElementById('compras-pendiente').textContent = dinero(data.pendiente);
+
+        if (data.compras.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="vacio">Todavía no hay compras a este proveedor</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.compras.map(c => `
+            <tr>
+                <td>${formatearFecha(c.fecha)}</td>
+                <td>${escaparHtml(c.descripcion)}${c.observaciones ? `<br><small class="detalle-obs">${escaparHtml(c.observaciones)}</small>` : ''}</td>
+                <td class="num">${dinero(c.monto)}</td>
+                <td><span class="badge ${c.pagada ? '' : 'por-pagar'}">${c.pagada ? 'Pagada' : 'Pendiente'}</span></td>
+                <td class="acciones">
+                    <button class="btn-link" data-accion="${c.pagada ? 'desmarcar' : 'pagar'}" data-id="${c.id}">${c.pagada ? 'Marcar pendiente' : 'Marcar pagada'}</button>
+                    <button class="btn-link" data-accion="editar" data-id="${c.id}">Editar</button>
+                    <button class="btn-link peligro" data-accion="eliminar" data-id="${c.id}">Eliminar</button>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="5" class="vacio">Error al cargar las compras</td></tr>';
+    }
+}
+
+function abrirComprasProveedor(id) {
+    const proveedor = estadoProveedores.lista.find(p => p.id === id);
+    if (!proveedor) return;
+
+    estadoProveedores.proveedorActual = proveedor;
+    document.getElementById('modal-compras-titulo').textContent = `Compras a ${proveedor.nombre}`;
+    document.getElementById('tabla-compras').innerHTML = '<tr><td colspan="5" class="vacio">Cargando...</td></tr>';
+    document.getElementById('modal-compras').classList.remove('hidden');
+    cargarComprasProveedor();
+}
+
+function cerrarComprasProveedor() {
+    document.getElementById('modal-compras').classList.add('hidden');
+    estadoProveedores.proveedorActual = null;
+    cargarProveedores(); // refresca totales de la tabla principal
+}
+
+// ---------- Alta / edición de compra ----------
+function abrirModalCompra(compra = null) {
+    estadoProveedores.editandoCompraId = compra ? compra.id : null;
+
+    document.getElementById('modal-compra-titulo').textContent = compra ? 'Editar compra' : 'Nueva compra';
+    document.getElementById('compra-descripcion').value = compra?.descripcion || '';
+    document.getElementById('compra-monto').value = compra ? compra.monto : '';
+    document.getElementById('compra-fecha').value = compra?.fecha || hoyLocal();
+    document.getElementById('compra-pagada').checked = compra ? compra.pagada : true;
+    document.getElementById('compra-observaciones').value = compra?.observaciones || '';
+
+    const error = document.getElementById('compra-error');
+    error.classList.add('hidden');
+    error.textContent = '';
+
+    document.getElementById('modal-compra').classList.remove('hidden');
+    document.getElementById('compra-descripcion').focus();
+}
+
+function cerrarModalCompra() {
+    document.getElementById('modal-compra').classList.add('hidden');
+    estadoProveedores.editandoCompraId = null;
+}
+
+async function guardarCompra(evento) {
+    evento.preventDefault();
+    if (!estadoProveedores.proveedorActual) return;
+
+    const cuerpo = {
+        proveedor_id: estadoProveedores.proveedorActual.id,
+        descripcion: document.getElementById('compra-descripcion').value,
+        monto: document.getElementById('compra-monto').value,
+        fecha: document.getElementById('compra-fecha').value,
+        pagada: document.getElementById('compra-pagada').checked,
+        observaciones: document.getElementById('compra-observaciones').value
+    };
+
+    const editando = estadoProveedores.editandoCompraId !== null;
+    const url = editando ? `/api/compras/${estadoProveedores.editandoCompraId}` : '/api/compras';
+    const error = document.getElementById('compra-error');
+
+    try {
+        const res = await fetch(url, {
+            method: editando ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(cuerpo)
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            error.textContent = data.error || 'No se pudo guardar la compra';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        cerrarModalCompra();
+        cargarComprasProveedor();
+    } catch (e) {
+        error.textContent = 'Error de conexión con el servidor';
+        error.classList.remove('hidden');
+    }
+}
+
+async function cambiarPagadaCompra(id, pagada) {
+    try {
+        const res = await fetch(`/api/compras/${id}/pagada`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pagada })
+        });
+        if (!res.ok) throw new Error('Error al actualizar');
+        cargarComprasProveedor();
+    } catch (error) {
+        alert('No se pudo actualizar la compra');
+    }
+}
+
+async function eliminarCompra(id) {
+    const compra = estadoProveedores.compras.find(c => c.id === id);
+    if (!compra) return;
+
+    if (!confirm(`¿Eliminar la compra "${compra.descripcion}" por ${dinero(compra.monto)}?`)) return;
+
+    try {
+        const res = await fetch(`/api/compras/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Error al eliminar');
+        cargarComprasProveedor();
+    } catch (error) {
+        alert('No se pudo eliminar la compra');
+    }
+}
+
+// Eventos de proveedores
+document.getElementById('btn-nuevo-proveedor').addEventListener('click', () => abrirModalProveedor());
+document.getElementById('btn-cancelar-proveedor').addEventListener('click', cerrarModalProveedor);
+document.getElementById('form-proveedor').addEventListener('submit', guardarProveedor);
+document.getElementById('modal-proveedor').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-proveedor') cerrarModalProveedor();
+});
+
+document.getElementById('tabla-proveedores').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion]');
+    if (!boton) return;
+
+    const id = parseInt(boton.dataset.id, 10);
+    if (boton.dataset.accion === 'compras') abrirComprasProveedor(id);
+    else if (boton.dataset.accion === 'editar') {
+        const proveedor = estadoProveedores.lista.find(p => p.id === id);
+        if (proveedor) abrirModalProveedor(proveedor);
+    } else if (boton.dataset.accion === 'eliminar') eliminarProveedor(id);
+});
+
+// Eventos de compras
+document.getElementById('btn-cerrar-compras').addEventListener('click', cerrarComprasProveedor);
+document.getElementById('modal-compras').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-compras') cerrarComprasProveedor();
+});
+document.getElementById('btn-nueva-compra').addEventListener('click', () => abrirModalCompra());
+document.getElementById('btn-cancelar-compra').addEventListener('click', cerrarModalCompra);
+document.getElementById('form-compra').addEventListener('submit', guardarCompra);
+document.getElementById('modal-compra').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-compra') cerrarModalCompra();
+});
+
+document.getElementById('tabla-compras').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion]');
+    if (!boton) return;
+
+    const id = parseInt(boton.dataset.id, 10);
+    if (boton.dataset.accion === 'pagar') cambiarPagadaCompra(id, true);
+    else if (boton.dataset.accion === 'desmarcar') cambiarPagadaCompra(id, false);
+    else if (boton.dataset.accion === 'editar') {
+        const compra = estadoProveedores.compras.find(c => c.id === id);
+        if (compra) abrirModalCompra(compra);
+    } else if (boton.dataset.accion === 'eliminar') eliminarCompra(id);
 });

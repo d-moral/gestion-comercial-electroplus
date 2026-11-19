@@ -621,3 +621,20 @@ img.marca-icono {
     background: none;
     border-radius: 8px;
 }
+
+
+/* Proveedores */
+.badge.por-pagar {
+    background: var(--acento-suave);
+    color: var(--acento-oscuro);
+}
+
+.label-check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.label-check input {
+    width: auto;
+}

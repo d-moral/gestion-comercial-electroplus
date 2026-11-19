@@ -110,7 +110,7 @@ function generarRemito(venta, salida) {
     doc.pipe(salida);
 
     // ---------- Parte superior: el logo ----------
-    const TAM_LOGO = 130;
+    const TAM_LOGO = 100;
     if (fs.existsSync(RUTA_LOGO)) {
         doc.image(RUTA_LOGO, (doc.page.width - TAM_LOGO) / 2, 30, { fit: [TAM_LOGO, TAM_LOGO] });
     } else {
