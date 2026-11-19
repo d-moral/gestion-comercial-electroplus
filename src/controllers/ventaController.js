@@ -1,4 +1,5 @@
 const Venta = require('../models/venta');
+const { generarRemito } = require('../pdf/remito');
 
 function idDesdeParams(req) {
     const id = parseInt(req.params.id, 10);
@@ -178,4 +179,23 @@ async function anular(req, res) {
     }
 }
 
-module.exports = { listar, obtenerUna, crear, anular };
+async function remito(req, res) {
+    try {
+        const id = idDesdeParams(req);
+        if (!id) return res.status(400).json({ error: 'ID inválido' });
+
+        const venta = await Venta.obtenerPorId(id);
+        if (!venta) return res.status(404).json({ error: 'Venta no encontrada' });
+
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `inline; filename="remito-${String(venta.id).padStart(8, '0')}.pdf"`);
+        generarRemito(venta, res);
+    } catch (error) {
+        console.error(error);
+        if (!res.headersSent) {
+            res.status(500).json({ error: 'Error al generar el remito' });
+        }
+    }
+}
+
+module.exports = { listar, obtenerUna, crear, anular, remito };
