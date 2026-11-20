@@ -11,6 +11,7 @@ services:
     volumes:
       - ./src:/app/src
       - ./public:/app/public
+      - ./backups:/app/backups
     restart: unless-stopped
 
   db:

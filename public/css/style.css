@@ -638,3 +638,19 @@ img.marca-icono {
 .label-check input {
     width: auto;
 }
+
+
+/* Estado de las copias */
+.aviso {
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    background: #dcfce7;
+    color: var(--ok);
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+}
+
+.aviso.alerta {
+    background: #fee2e2;
+    color: var(--error);
+}
