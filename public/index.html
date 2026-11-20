@@ -227,6 +227,7 @@
             </div>
 
             <div class="tarjeta">
+                <div id="backups-estado" class="aviso"></div>
                 <p id="backups-info" class="nota-resumen"></p>
 
                 <div class="tabla-contenedor">
@@ -448,6 +449,25 @@
                 <button type="submit" class="btn">Guardar</button>
             </div>
         </form>
+    </div>
+</div>
+<div id="modal-restaurar" class="modal hidden">
+    <div class="modal-contenido">
+        <h3>Restaurar copia de seguridad</h3>
+        <p id="restaurar-detalle"><strong></strong></p>
+        <p class="nota-resumen">
+            Se van a reemplazar <strong>todos los datos actuales</strong> (clientes, ventas, pagos, gastos...)
+            por los de esa copia. Antes de hacerlo, el sistema guarda una copia del estado actual,
+            por si hay que volver atrás.
+        </p>
+        <label>Para confirmar, escribí RESTAURAR
+            <input type="text" id="restaurar-confirmacion" class="input" autocomplete="off">
+        </label>
+        <p id="restaurar-error" class="mensaje-error hidden"></p>
+        <div class="modal-botones">
+            <button type="button" id="btn-cancelar-restaurar" class="btn-secundario">Cancelar</button>
+            <button type="button" id="btn-confirmar-restaurar" class="btn" disabled>Restaurar</button>
+        </div>
     </div>
 </div>
 <script src="js/app.js"></script>

@@ -6,7 +6,7 @@ function listar(req, res) {
     try {
         res.json({
             backups: Backup.listarBackups(),
-            hora_automatica: Backup.HORA_BACKUP,
+            cada_horas: Backup.HORAS_ENTRE_BACKUPS,
             maximo: Backup.MAX_BACKUPS
         });
     } catch (error) {
@@ -43,4 +43,22 @@ function descargar(req, res) {
     res.download(ruta, nombre);
 }
 
-module.exports = { listar, crear, descargar };
+async function restaurar(req, res) {
+    try {
+        const nombre = req.params.nombre;
+        if (!Backup.NOMBRE_VALIDO.test(nombre)) {
+            return res.status(400).json({ error: 'Nombre de archivo inválido' });
+        }
+        if (req.body?.confirmacion !== 'RESTAURAR') {
+            return res.status(400).json({ error: 'Falta la confirmación' });
+        }
+
+        const resultado = await Backup.restaurarBackup(nombre);
+        res.json(resultado);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: error.message });
+    }
+}
+
+module.exports = { listar, crear, descargar, restaurar };

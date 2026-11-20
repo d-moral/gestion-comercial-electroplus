@@ -1543,8 +1543,9 @@ async function cargarBackups() {
         if (!res.ok) throw new Error('Error al cargar');
         const data = await res.json();
 
+        actualizarEstadoBackups(data);
         document.getElementById('backups-info').textContent =
-            `Se hace una copia automática todos los días a las ${data.hora_automatica} y se guardan las últimas ${data.maximo}. ` +
+            `Se hace una copia automática cuando pasan más de ${data.cada_horas} horas desde la última, y se guardan las últimas ${data.maximo}. ` +
             `Podés descargar cualquiera para guardarla aparte.`;
 
         if (data.backups.length === 0) {
@@ -1559,6 +1560,7 @@ async function cargarBackups() {
                 <td class="num">${formatearTamano(b.tamano_bytes)}</td>
                 <td class="acciones">
                     <a class="btn-link" href="/api/backups/${encodeURIComponent(b.nombre)}/descargar">Descargar</a>
+                    <button class="btn-link peligro" data-accion="restaurar" data-nombre="${escaparHtml(b.nombre)}" data-fecha="${b.fecha}" data-hora="${b.hora}">Restaurar</button>
                 </td>
             </tr>
         `).join('');
@@ -1588,3 +1590,112 @@ async function hacerBackup() {
 }
 
 document.getElementById('btn-hacer-backup').addEventListener('click', hacerBackup);
+
+
+
+// ---------- Estado de las copias y restauración ----------
+function textoHace(ms) {
+    const horas = Math.floor(ms / 3600000);
+    if (horas < 1) return 'hace menos de 1 hora';
+    if (horas < 24) return `hace ${horas} ${horas === 1 ? 'hora' : 'horas'}`;
+    const dias = Math.floor(horas / 24);
+    return `hace ${dias} ${dias === 1 ? 'día' : 'días'}`;
+}
+
+function actualizarEstadoBackups(data) {
+    const aviso = document.getElementById('backups-estado');
+
+    if (data.backups.length === 0) {
+        aviso.className = 'aviso alerta';
+        aviso.textContent = 'Todavía no hay ninguna copia de seguridad.';
+        return;
+    }
+
+    const ultima = data.backups[0]; // la lista viene con la más nueva primero
+    const edadMs = Date.now() - ultima.creado_ms;
+
+    if (edadMs > 36 * 3600000) {
+        aviso.className = 'aviso alerta';
+        aviso.textContent = `¡Atención! La última copia es ${textoHace(edadMs)}. Tocá "Hacer copia ahora".`;
+    } else {
+        aviso.className = 'aviso';
+        aviso.textContent = `Copias al día. Última copia ${textoHace(edadMs)} (${formatearFecha(ultima.fecha)} a las ${ultima.hora}).`;
+    }
+}
+
+let backupARestaurar = null;
+let restaurando = false;
+
+function abrirModalRestaurar(nombre, fecha, hora) {
+    backupARestaurar = nombre;
+    document.querySelector('#restaurar-detalle strong').textContent =
+        `Copia del ${formatearFecha(fecha)} a las ${hora}`;
+    document.getElementById('restaurar-confirmacion').value = '';
+    document.getElementById('btn-confirmar-restaurar').disabled = true;
+
+    const error = document.getElementById('restaurar-error');
+    error.classList.add('hidden');
+    error.textContent = '';
+
+    document.getElementById('modal-restaurar').classList.remove('hidden');
+    document.getElementById('restaurar-confirmacion').focus();
+}
+
+function cerrarModalRestaurar() {
+    if (restaurando) return;
+    document.getElementById('modal-restaurar').classList.add('hidden');
+    backupARestaurar = null;
+}
+
+async function confirmarRestaurar() {
+    if (!backupARestaurar || restaurando) return;
+
+    const botonConfirmar = document.getElementById('btn-confirmar-restaurar');
+    const botonCancelar = document.getElementById('btn-cancelar-restaurar');
+    const error = document.getElementById('restaurar-error');
+
+    restaurando = true;
+    botonConfirmar.disabled = true;
+    botonCancelar.disabled = true;
+    botonConfirmar.textContent = 'Restaurando... no cierres esta ventana';
+    error.classList.add('hidden');
+
+    try {
+        const res = await fetch(`/api/backups/${encodeURIComponent(backupARestaurar)}/restaurar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ confirmacion: document.getElementById('restaurar-confirmacion').value.trim() })
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+            error.textContent = data.error || 'No se pudo restaurar la copia';
+            error.classList.remove('hidden');
+            return;
+        }
+
+        alert(`Restauración completa.\n\nAntes de restaurar se guardó una copia del estado anterior (${data.copia_previa}).`);
+        location.reload();
+    } catch (e) {
+        error.textContent = 'Error de conexión con el servidor';
+        error.classList.remove('hidden');
+    } finally {
+        restaurando = false;
+        botonCancelar.disabled = false;
+        botonConfirmar.textContent = 'Restaurar';
+        botonConfirmar.disabled = document.getElementById('restaurar-confirmacion').value.trim() !== 'RESTAURAR';
+    }
+}
+
+document.getElementById('tabla-backups').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion="restaurar"]');
+    if (!boton) return;
+    abrirModalRestaurar(boton.dataset.nombre, boton.dataset.fecha, boton.dataset.hora);
+});
+
+document.getElementById('restaurar-confirmacion').addEventListener('input', (e) => {
+    document.getElementById('btn-confirmar-restaurar').disabled = e.target.value.trim() !== 'RESTAURAR';
+});
+
+document.getElementById('btn-cancelar-restaurar').addEventListener('click', cerrarModalRestaurar);
+document.getElementById('btn-confirmar-restaurar').addEventListener('click', confirmarRestaurar);
