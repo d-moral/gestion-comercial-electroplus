@@ -10,6 +10,7 @@ const resumenRouter = require('./routes/resumen');
 const proveedoresRouter = require('./routes/proveedores');
 const comprasRouter = require('./routes/compras');
 const backupsRouter = require('./routes/backups');
+const cuentasRouter = require('./routes/cuentas');
 const { iniciarBackupsAutomaticos } = require('./backup/backup');
 const { aplicarEsquemaAlArrancar } = require('./db/esquema');
 
@@ -36,6 +37,7 @@ app.use('/api/resumen', resumenRouter);
 app.use('/api/proveedores', proveedoresRouter);
 app.use('/api/compras', comprasRouter);
 app.use('/api/backups', backupsRouter);
+app.use('/api/cuentas', cuentasRouter);
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
     aplicarEsquemaAlArrancar().then(() => iniciarBackupsAutomaticos());

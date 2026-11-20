@@ -654,3 +654,8 @@ img.marca-icono {
     background: #fee2e2;
     color: var(--error);
 }
+
+/* Estado de cuenta */
+.hidden {
+    display: none !important;
+}

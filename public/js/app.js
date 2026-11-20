@@ -7,7 +7,10 @@ function mostrarPanel(nombre) {
         panel.classList.toggle('active', panel.id === `panel-${nombre}`);
     });
 
-    if (nombre === 'clientes') cargarClientes();
+    if (nombre === 'clientes') {
+        cerrarCuentaCliente();
+        cargarClientes();
+    }
     if (nombre === 'ventas') cargarVentas();
     if (nombre === 'cobros') cargarCobros();
     if (nombre === 'gastos') cargarGastos();
@@ -75,6 +78,7 @@ async function cargarClientes() {
                     <td>${escaparHtml(c.dni || '-')}</td>
                     <td>${escaparHtml(c.telefono || '-')}</td>
                     <td>${escaparHtml(c.direccion || '-')}</td>
+                    <td><button class="btn-link" data-accion="cuenta" data-id="${c.id}">Ver cuenta</button></td>
                     <td class="acciones">
                         <button class="btn-link" data-accion="editar" data-id="${c.id}">Editar</button>
                         <button class="btn-link peligro" data-accion="eliminar" data-id="${c.id}">Eliminar</button>
@@ -1699,3 +1703,195 @@ document.getElementById('restaurar-confirmacion').addEventListener('input', (e) 
 
 document.getElementById('btn-cancelar-restaurar').addEventListener('click', cerrarModalRestaurar);
 document.getElementById('btn-confirmar-restaurar').addEventListener('click', confirmarRestaurar);
+
+
+
+// ============================================================
+// ESTADO DE CUENTA DEL CLIENTE (dentro de Clientes)
+// ============================================================
+const estadoCuenta = { clienteId: null };
+
+const FRECUENCIAS_TEXTO = { semanal: 'semanales', quincenal: 'quincenales', mensual: 'mensuales' };
+
+function elementosListaClientes() {
+    return document.querySelectorAll('#panel-clientes > .panel-encabezado, #panel-clientes > .tarjeta');
+}
+
+function cerrarCuentaCliente() {
+    estadoCuenta.clienteId = null;
+    document.getElementById('cuenta-cliente').classList.add('hidden');
+    elementosListaClientes().forEach(el => el.classList.remove('hidden'));
+}
+
+async function abrirCuentaCliente(id) {
+    estadoCuenta.clienteId = id;
+    elementosListaClientes().forEach(el => el.classList.add('hidden'));
+    document.getElementById('cuenta-cliente').classList.remove('hidden');
+    document.getElementById('cuenta-contenido').innerHTML = '<p class="vacio-simple">Cargando...</p>';
+    await cargarCuentaCliente();
+}
+
+function textoEstadoCuotaCuenta(c) {
+    if (c.vencida) return `<span class="atraso">Vencida (${textoDias(c.dias_atraso)})</span>`;
+    if (c.parcial) return 'Pagada en parte';
+    return 'Pendiente';
+}
+
+async function cargarCuentaCliente() {
+    const id = estadoCuenta.clienteId;
+    if (!id) return;
+
+    const contenido = document.getElementById('cuenta-contenido');
+    try {
+        const res = await fetch(`/api/cuentas/cliente/${id}`);
+        const d = await res.json();
+
+        if (!res.ok) {
+            contenido.innerHTML = `<p class="mensaje-error">${escaparHtml(d.error || 'No se pudo cargar el estado de cuenta')}</p>`;
+            return;
+        }
+
+        document.getElementById('cuenta-titulo').textContent = `Estado de cuenta - ${d.cliente.nombre}`;
+
+        const datosCliente = [];
+        if (d.cliente.dni) datosCliente.push(`DNI: ${d.cliente.dni}`);
+        if (d.cliente.telefono) datosCliente.push(`Tel: ${d.cliente.telefono}`);
+        if (d.cliente.direccion) datosCliente.push(d.cliente.direccion);
+
+        const r = d.resumen;
+
+        if (r.cantidad_ventas === 0) {
+            contenido.innerHTML = `
+                <div class="tarjeta">
+                    <p class="nota-resumen">${escaparHtml(datosCliente.join(' · '))}</p>
+                    <p class="vacio-simple">Este cliente todavía no tiene compras.</p>
+                </div>`;
+            return;
+        }
+
+        // ---- Cuotas pendientes ----
+        const filasCuotas = d.cuotas_pendientes.map(c => `
+            <tr>
+                <td>Venta #${c.venta_id} (cuota ${c.numero}/${c.total_cuotas})</td>
+                <td>${formatearFecha(c.vencimiento)}</td>
+                <td class="num">${dinero(c.saldo)}</td>
+                <td>${textoEstadoCuotaCuenta(c)}</td>
+            </tr>
+        `).join('');
+
+        const tablaCuotas = d.cuotas_pendientes.length === 0
+            ? '<p class="vacio-simple">No tiene cuotas pendientes. ¡Está al día!</p>'
+            : `<table class="tabla">
+                <thead>
+                <tr><th>Venta</th><th>Vence</th><th class="num">Saldo</th><th>Estado</th></tr>
+                </thead>
+                <tbody>${filasCuotas}</tbody>
+               </table>`;
+
+        // ---- Compras ----
+        const filasVentas = d.ventas.map(v => {
+            const detalle = v.items.map(i => `${i.cantidad} × ${escaparHtml(i.descripcion)}`).join(', ');
+            const plan = v.cantidad_cuotas === 1
+                ? 'Pago único'
+                : `${v.cantidad_cuotas} cuotas ${FRECUENCIAS_TEXTO[v.frecuencia] || ''}`;
+            return `
+                <tr>
+                    <td>${formatearFecha(v.fecha)}</td>
+                    <td>N° ${String(v.id).padStart(8, '0')}</td>
+                    <td>${detalle}<br><small class="detalle-obs">${plan}</small></td>
+                    <td class="num">${dinero(v.total_venta)}</td>
+                    <td class="num">${dinero(v.total_pagado)}</td>
+                    <td class="num">${v.saldo > 0 ? `<span class="atraso">${dinero(v.saldo)}</span>` : dinero(0)}</td>
+                    <td class="acciones"><button class="btn-link" data-accion="ver-venta" data-id="${v.id}">Ver / cobrar</button></td>
+                </tr>`;
+        }).join('');
+
+        // ---- Pagos ----
+        const filasPagos = d.pagos.map(p => `
+            <tr>
+                <td>${formatearFecha(p.fecha)}</td>
+                <td>Venta #${p.venta_id}</td>
+                <td>${etiquetaMetodo(p.metodo)}</td>
+                <td class="num">${dinero(p.monto)}</td>
+            </tr>
+        `).join('');
+
+        const tablaPagos = d.pagos.length === 0
+            ? '<p class="vacio-simple">Todavía no hizo ningún pago.</p>'
+            : `<table class="tabla">
+                <thead>
+                <tr><th>Fecha</th><th>Venta</th><th>Forma de pago</th><th class="num">Monto</th></tr>
+                </thead>
+                <tbody>${filasPagos}</tbody>
+               </table>`;
+
+        contenido.innerHTML = `
+            <div class="tarjeta">
+                <p class="nota-resumen">${escaparHtml(datosCliente.join(' · '))}</p>
+                <div class="venta-totales">
+                    <div><span class="etiqueta">Total comprado (${r.cantidad_ventas} ${r.cantidad_ventas === 1 ? 'venta' : 'ventas'})</span><strong>${dinero(r.total_comprado)}</strong></div>
+                    <div><span class="etiqueta">Pagado</span><strong>${dinero(r.total_pagado)}</strong></div>
+                    <div><span class="etiqueta">Debe</span><strong>${dinero(r.debe)}</strong></div>
+                    <div><span class="etiqueta">Vencido</span><strong>${r.vencido > 0 ? `<span class="atraso">${dinero(r.vencido)}</span>` : dinero(0)}</strong></div>
+                </div>
+                <p class="nota-resumen">${r.dias_atraso > 0 ? `Mayor atraso: ${textoDias(r.dias_atraso)}` : 'Sin atrasos'}</p>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Cuotas pendientes</h3>
+                <div class="tabla-contenedor">${tablaCuotas}</div>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Compras</h3>
+                <div class="tabla-contenedor">
+                    <table class="tabla">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Remito</th>
+                            <th>Qué compró</th>
+                            <th class="num">Total</th>
+                            <th class="num">Pagado</th>
+                            <th class="num">Saldo</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody>${filasVentas}</tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tarjeta bloque-cobros">
+                <h3 class="bloque-titulo">Pagos recibidos</h3>
+                <div class="tabla-contenedor">${tablaPagos}</div>
+            </div>
+        `;
+    } catch (error) {
+        contenido.innerHTML = '<p class="mensaje-error">Error al cargar el estado de cuenta</p>';
+    }
+}
+
+// Eventos del estado de cuenta
+document.getElementById('tabla-clientes').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion="cuenta"]');
+    if (boton) abrirCuentaCliente(parseInt(boton.dataset.id, 10));
+});
+
+document.getElementById('btn-volver-clientes').addEventListener('click', cerrarCuentaCliente);
+
+document.getElementById('cuenta-contenido').addEventListener('click', (e) => {
+    const boton = e.target.closest('button[data-accion="ver-venta"]');
+    if (boton) abrirDetalleVenta(parseInt(boton.dataset.id, 10));
+});
+
+// Al cerrar el detalle de una venta se refresca la cuenta (puede haber un pago nuevo)
+function refrescarCuentaSiCorresponde() {
+    if (estadoCuenta.clienteId && document.getElementById('panel-clientes').classList.contains('active')) {
+        cargarCuentaCliente();
+    }
+}
+document.getElementById('btn-cerrar-detalle-venta').addEventListener('click', refrescarCuentaSiCorresponde);
+document.getElementById('modal-detalle-venta').addEventListener('click', (e) => {
+    if (e.target.id === 'modal-detalle-venta') refrescarCuentaSiCorresponde();
+});
