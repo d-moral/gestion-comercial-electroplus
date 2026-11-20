@@ -11,6 +11,7 @@ const proveedoresRouter = require('./routes/proveedores');
 const comprasRouter = require('./routes/compras');
 const backupsRouter = require('./routes/backups');
 const { iniciarBackupsAutomaticos } = require('./backup/backup');
+const { aplicarEsquemaAlArrancar } = require('./db/esquema');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -37,5 +38,5 @@ app.use('/api/compras', comprasRouter);
 app.use('/api/backups', backupsRouter);
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
-    iniciarBackupsAutomaticos();
+    aplicarEsquemaAlArrancar().then(() => iniciarBackupsAutomaticos());
 });
