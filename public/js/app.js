@@ -13,6 +13,7 @@ function mostrarPanel(nombre) {
     if (nombre === 'gastos') cargarGastos();
     if (nombre === 'inicio') cargarResumen();
     if (nombre === 'proveedores') cargarProveedores();
+    if (nombre === 'backups') cargarBackups();
 }
 
 document.querySelectorAll('.menu-item').forEach(btn => {
@@ -1523,3 +1524,67 @@ document.getElementById('tabla-compras').addEventListener('click', (e) => {
         if (compra) abrirModalCompra(compra);
     } else if (boton.dataset.accion === 'eliminar') eliminarCompra(id);
 });
+
+
+
+// ============================================================
+// COPIAS DE SEGURIDAD
+// ============================================================
+function formatearTamano(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toLocaleString('es-AR', { maximumFractionDigits: 1 })} KB`;
+    return `${(bytes / 1024 / 1024).toLocaleString('es-AR', { maximumFractionDigits: 1 })} MB`;
+}
+
+async function cargarBackups() {
+    const tbody = document.getElementById('tabla-backups');
+    try {
+        const res = await fetch('/api/backups');
+        if (!res.ok) throw new Error('Error al cargar');
+        const data = await res.json();
+
+        document.getElementById('backups-info').textContent =
+            `Se hace una copia automática todos los días a las ${data.hora_automatica} y se guardan las últimas ${data.maximo}. ` +
+            `Podés descargar cualquiera para guardarla aparte.`;
+
+        if (data.backups.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="4" class="vacio">Todavía no hay copias. Tocá "Hacer copia ahora".</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = data.backups.map(b => `
+            <tr>
+                <td>${formatearFecha(b.fecha)}</td>
+                <td>${b.hora}</td>
+                <td class="num">${formatearTamano(b.tamano_bytes)}</td>
+                <td class="acciones">
+                    <a class="btn-link" href="/api/backups/${encodeURIComponent(b.nombre)}/descargar">Descargar</a>
+                </td>
+            </tr>
+        `).join('');
+    } catch (error) {
+        tbody.innerHTML = '<tr><td colspan="4" class="vacio">Error al cargar las copias</td></tr>';
+    }
+}
+
+async function hacerBackup() {
+    const boton = document.getElementById('btn-hacer-backup');
+    boton.disabled = true;
+    boton.textContent = 'Haciendo copia...';
+
+    try {
+        const res = await fetch('/api/backups', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) {
+            alert(data.error || 'No se pudo hacer la copia');
+        }
+        cargarBackups();
+    } catch (error) {
+        alert('Error de conexión con el servidor');
+    } finally {
+        boton.disabled = false;
+        boton.textContent = 'Hacer copia ahora';
+    }
+}
+
+document.getElementById('btn-hacer-backup').addEventListener('click', hacerBackup);

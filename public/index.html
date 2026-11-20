@@ -22,6 +22,7 @@
             <button class="menu-item" data-panel="cobros">Cobros</button>
             <button class="menu-item" data-panel="gastos">Gastos</button>
             <button class="menu-item" data-panel="proveedores">Proveedores</button>
+            <button class="menu-item" data-panel="backups">Copias</button>
         </nav>
 
         <div class="sidebar-pie">
@@ -215,6 +216,30 @@
                         </tr>
                         </thead>
                         <tbody id="tabla-proveedores"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+        <section id="panel-backups" class="panel">
+            <div class="panel-encabezado">
+                <h2>Copias de seguridad</h2>
+                <button id="btn-hacer-backup" class="btn">Hacer copia ahora</button>
+            </div>
+
+            <div class="tarjeta">
+                <p id="backups-info" class="nota-resumen"></p>
+
+                <div class="tabla-contenedor">
+                    <table class="tabla">
+                        <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Hora</th>
+                            <th class="num">Tamaño</th>
+                            <th></th>
+                        </tr>
+                        </thead>
+                        <tbody id="tabla-backups"></tbody>
                     </table>
                 </div>
             </div>

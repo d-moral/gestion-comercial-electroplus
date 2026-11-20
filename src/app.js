@@ -9,6 +9,8 @@ const gastosRouter = require('./routes/gastos');
 const resumenRouter = require('./routes/resumen');
 const proveedoresRouter = require('./routes/proveedores');
 const comprasRouter = require('./routes/compras');
+const backupsRouter = require('./routes/backups');
+const { iniciarBackupsAutomaticos } = require('./backup/backup');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -32,6 +34,8 @@ app.use('/api/gastos', gastosRouter);
 app.use('/api/resumen', resumenRouter);
 app.use('/api/proveedores', proveedoresRouter);
 app.use('/api/compras', comprasRouter);
+app.use('/api/backups', backupsRouter);
 app.listen(PORT, () => {
     console.log(`Servidor corriendo en el puerto ${PORT}`);
+    iniciarBackupsAutomaticos();
 });
