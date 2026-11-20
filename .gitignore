@@ -7,3 +7,4 @@ dist/
 coverage/
 .idea/
 backups/
+scripts/pendrive.log
