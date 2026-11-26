@@ -4,10 +4,11 @@ const fs = require('fs');
 
 const RUTA_LOGO = path.join(__dirname, '../../public/img/logo.png');
 
-const AZUL = '#1e3a8a';
+const AZUL = '#0b6cf0';
 const GRIS = '#6b7280';
 const TEXTO = '#111827';
-const FRANJA = '#f3f4f6';
+const BORDE = '#d1d5db';
+const DATOS_LOCAL = [];
 const ROJO = '#b91c1c';
 const VERDE = '#15803d';
 
@@ -62,7 +63,7 @@ function tabla(doc, columnas, filas) {
         const altoTexto = Math.max(...fila.map((valor, j) =>
             doc.heightOfString(String(valor), { width: columnas[j].ancho - 12 })
         ));
-        const alto = altoTexto + 10;
+        const alto = altoTexto + 8;
 
         if (doc.y + alto > doc.page.height - doc.page.margins.bottom - 10) {
             doc.addPage();
@@ -70,27 +71,89 @@ function tabla(doc, columnas, filas) {
         }
 
         const y = doc.y;
-        if (i % 2 === 1) doc.rect(MARGEN, y, anchoTotal, alto).fill(FRANJA);
 
         doc.font('Helvetica').fontSize(9).fillColor(TEXTO);
         let x = MARGEN;
         fila.forEach((valor, j) => {
-            doc.text(String(valor), x + 6, y + 5, { width: columnas[j].ancho - 12, align: columnas[j].alinear || 'left' });
+            doc.text(String(valor), x + 6, y + 4, {width: columnas[j].ancho - 12, align: columnas[j].alinear || 'left' });
             x += columnas[j].ancho;
         });
         doc.y = y + alto;
+        doc.lineWidth(0.5).strokeColor(BORDE);
+        doc.moveTo(MARGEN, y + alto).lineTo(MARGEN + anchoTotal, y + alto).stroke();
+        let xLinea = MARGEN;
+        for (let j = 0; j <= columnas.length; j++) {
+            doc.moveTo(xLinea, y).lineTo(xLinea, y + alto).stroke();
+            if (j < columnas.length) xLinea += columnas[j].ancho;
+        }
     });
 
     doc.y += 6;
 }
 
-function lineaTotal(doc, etiqueta, valor, { negrita = false, color = TEXTO } = {}) {
-    asegurarEspacio(doc, 24);
-    const y = doc.y;
-    doc.font(negrita ? 'Helvetica-Bold' : 'Helvetica').fontSize(negrita ? 12 : 10).fillColor(color);
-    doc.text(etiqueta, MARGEN + ANCHO - 260, y, { width: 150, align: 'right', lineBreak: false });
-    doc.text(valor, MARGEN + ANCHO - 100, y, { width: 100, align: 'right', lineBreak: false });
-    doc.y = y + (negrita ? 20 : 16);
+function marcaDeAgua(doc) {
+    const xAnterior = doc.x;
+    const yAnterior = doc.y;
+    const texto = 'ELECTROPLUS';
+    const cx = doc.page.width / 2;
+    const cy = doc.page.height / 2;
+    doc.save();
+    doc.rotate(-45, { origin: [cx, cy] });
+    doc.font('Helvetica-Bold').fontSize(72).fillColor(AZUL).fillOpacity(0.07);
+    const ancho = doc.widthOfString(texto);
+    doc.text(texto, cx - ancho / 2, cy - 36, { lineBreak: false });
+    doc.restore();
+    doc.x = xAnterior;
+    doc.y = yAnterior;
+}
+
+function cuadroTotales(doc, venta, anulada) {
+    const anchoTot = 230;
+    const xTot = MARGEN + ANCHO - anchoTot;
+    const anchoNotas = ANCHO - anchoTot - 15;
+    const ALTO_FILA = 22;
+    const ALTO_BANDA = 26;
+    const altoTotales = anulada ? ALTO_BANDA : ALTO_FILA * 2 + ALTO_BANDA;
+
+    const notas = venta.observaciones || '';
+    doc.font('Helvetica').fontSize(9);
+    const altoNotas = Math.max(
+        altoTotales,
+        26 + (notas ? doc.heightOfString(notas, { width: anchoNotas - 20 }) : 0) + 8
+    );
+
+    asegurarEspacio(doc, altoNotas + 10);
+    const y0 = doc.y;
+
+    // Notas (izquierda)
+    doc.lineWidth(0.5).strokeColor(BORDE).rect(MARGEN, y0, anchoNotas, altoNotas).stroke();
+    doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXTO)
+        .text('Notas', MARGEN + 10, y0 + 8, { lineBreak: false });
+    if (notas) {
+        doc.font('Helvetica').fontSize(9).fillColor(GRIS)
+            .text(notas, MARGEN + 10, y0 + 22, { width: anchoNotas - 20 });
+    }
+
+    // Totales (derecha): filas con borde y, al final, banda azul
+    let y = y0;
+    if (!anulada) {
+        [['Total', dinero(venta.total_venta)], ['Pagado', dinero(venta.total_pagado)]].forEach(([etiqueta, valor]) => {
+            doc.lineWidth(0.5).strokeColor(BORDE);
+            doc.rect(xTot, y, 110, ALTO_FILA).stroke();
+            doc.rect(xTot + 110, y, anchoTot - 110, ALTO_FILA).stroke();
+            doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXTO)
+                .text(etiqueta, xTot + 8, y + 7, { width: 94, lineBreak: false });
+            doc.font('Helvetica').fontSize(10).fillColor(TEXTO)
+                .text(valor, xTot + 118, y + 6, { width: anchoTot - 126, align: 'right', lineBreak: false });
+            y += ALTO_FILA;
+        });
+    }
+    doc.rect(xTot, y, anchoTot, ALTO_BANDA).fill(AZUL);
+    doc.font('Helvetica-Bold').fontSize(12).fillColor('#ffffff');
+    doc.text(anulada ? 'Total' : 'Saldo pendiente', xTot + 10, y + 8, { width: 110, lineBreak: false });
+    doc.text(dinero(anulada ? venta.total_venta : venta.saldo), xTot + 100, y + 8, { width: anchoTot - 110, align: 'right', lineBreak: false });
+
+    doc.y = y0 + altoNotas + 14;
 }
 
 function textoEstadoCuota(c) {
@@ -109,26 +172,34 @@ function generarRemito(venta, salida) {
     });
     doc.pipe(salida);
 
-    // ---------- Parte superior: el logo ----------
-    const TAM_LOGO = 100;
-    if (fs.existsSync(RUTA_LOGO)) {
-        doc.image(RUTA_LOGO, (doc.page.width - TAM_LOGO) / 2, 30, { fit: [TAM_LOGO, TAM_LOGO] });
-    } else {
-        doc.font('Helvetica-Bold').fontSize(28).fillColor(AZUL)
-            .text('ELECTROPLUS', MARGEN, 100, { width: ANCHO, align: 'center' });
-    }
+    marcaDeAgua(doc);
+    doc.on('pageAdded', () => marcaDeAgua(doc));
 
-    // ---------- Título y número ----------
-    const yTitulo = 30 + TAM_LOGO + 15;
-    doc.font('Helvetica-Bold').fontSize(18).fillColor(AZUL)
-        .text('REMITO', MARGEN, yTitulo, { width: ANCHO / 2, lineBreak: false });
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(TEXTO)
-        .text(`N° ${numero}`, MARGEN + ANCHO / 2, yTitulo + 2, { width: ANCHO / 2, align: 'right', lineBreak: false });
-    doc.font('Helvetica').fontSize(10).fillColor(GRIS)
-        .text(`Fecha: ${fecha(venta.fecha)}`, MARGEN + ANCHO / 2, yTitulo + 18, { width: ANCHO / 2, align: 'right', lineBreak: false });
-    doc.moveTo(MARGEN, yTitulo + 38).lineTo(MARGEN + ANCHO, yTitulo + 38)
-        .lineWidth(1.5).strokeColor(AZUL).stroke();
-    doc.y = yTitulo + 48;
+    // ---------- Encabezado: franja azul con logo ----------
+    const ALTO_FRANJA = 96;
+    const TAM_LOGO = 76;
+    doc.rect(MARGEN, 30, ANCHO, ALTO_FRANJA).fill(AZUL);
+    doc.roundedRect(MARGEN + 10, 37, TAM_LOGO + 6, TAM_LOGO + 6, 6).fill('#ffffff');
+    if (fs.existsSync(RUTA_LOGO)) {
+        doc.image(RUTA_LOGO, MARGEN + 13, 40, { fit: [TAM_LOGO, TAM_LOGO], align: 'center', valign: 'center' });
+    }
+    const xTexto = MARGEN + TAM_LOGO + 30;
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#ffffff')
+        .text('ELECTROPLUS', xTexto, 50, { lineBreak: false });
+    doc.font('Helvetica').fontSize(9)
+        .text('Tu casa, tu elección, tu estilo', xTexto, 74, { lineBreak: false });
+    DATOS_LOCAL.forEach((linea, i) => {
+        doc.text(linea, xTexto, 88 + i * 12, { lineBreak: false });
+    });
+
+    // Ícono de comprobante y título (abajo a la derecha, como en el modelo)
+    const xIcono = MARGEN + ANCHO - 14 - 20;
+    doc.lineWidth(1.5).strokeColor('#ffffff').roundedRect(xIcono, 40, 20, 24, 3).stroke();
+    doc.lineWidth(1);
+    [48, 53, 58].forEach(yLinea => doc.moveTo(xIcono + 5, yLinea).lineTo(xIcono + 15, yLinea).stroke());
+    doc.font('Helvetica-Bold').fontSize(20).fillColor('#ffffff')
+        .text('REMITO', MARGEN + 280, 86, { width: ANCHO - 294, align: 'right', lineBreak: false });
+    doc.y = 30 + ALTO_FRANJA + 14;
 
     const anulada = venta.estado === 'anulada';
     if (anulada) {
@@ -137,27 +208,56 @@ function generarRemito(venta, salida) {
         doc.y += 6;
     }
 
-    // ---------- Cliente ----------
-    doc.font('Helvetica-Bold').fontSize(9).fillColor(GRIS).text('CLIENTE', MARGEN, doc.y, { width: ANCHO });
-    doc.font('Helvetica-Bold').fontSize(12).fillColor(TEXTO).text(venta.cliente_nombre, MARGEN, doc.y + 2, { width: ANCHO });
+    // ---------- Detalle del remito ----------
+    const yDet = doc.y;
+    const ALTO_FILA = 20;
+    const ALTO_DET = ALTO_FILA * 3;
+    const ANCHO_ETIQ = 110;
+    const xMitad = MARGEN + ANCHO / 2;
+    const yCuerpo = yDet + 20;
+    doc.rect(MARGEN, yDet, ANCHO, 20).fill(AZUL);
+    doc.font('Helvetica-Bold').fontSize(10).fillColor('#ffffff')
+        .text('Detalle del remito', MARGEN, yDet + 5, { width: ANCHO, align: 'center', lineBreak: false });
+
+    // Cliente (izquierda)
+    doc.lineWidth(0.5).strokeColor(BORDE);
+    doc.rect(MARGEN, yCuerpo, ANCHO / 2, ALTO_DET).stroke();
+    doc.font('Helvetica-Bold').fontSize(8).fillColor(GRIS)
+        .text('CLIENTE', MARGEN + 10, yCuerpo + 8, { lineBreak: false });
+    doc.font('Helvetica-Bold').fontSize(12).fillColor(TEXTO)
+        .text(venta.cliente_nombre, MARGEN + 10, yCuerpo + 20, { width: ANCHO / 2 - 20, height: 14, ellipsis: true });
     const datos = [];
     if (venta.cliente_dni) datos.push(`DNI: ${venta.cliente_dni}`);
     if (venta.cliente_telefono) datos.push(`Tel: ${venta.cliente_telefono}`);
     if (datos.length) {
-        doc.font('Helvetica').fontSize(10).fillColor(GRIS).text(datos.join('     '), MARGEN, doc.y + 2, { width: ANCHO });
+        doc.font('Helvetica').fontSize(10).fillColor(GRIS)
+            .text(datos.join('     '), MARGEN + 10, yCuerpo + 40, { width: ANCHO / 2 - 20, lineBreak: false });
     }
-    doc.y += 16;
 
-    // ---------- Ítems (sin costos: es un documento para el cliente) ----------
+    // N° de remito, fecha y moneda (derecha, en grilla)
+    [['N° de remito', numero], ['Fecha', fecha(venta.fecha)], ['Moneda', 'ARS']].forEach(([etiqueta, valor], i) => {
+        const yFila = yCuerpo + i * ALTO_FILA;
+        doc.lineWidth(0.5).strokeColor(BORDE);
+        doc.rect(xMitad, yFila, ANCHO_ETIQ, ALTO_FILA).stroke();
+        doc.rect(xMitad + ANCHO_ETIQ, yFila, ANCHO / 2 - ANCHO_ETIQ, ALTO_FILA).stroke();
+        doc.font('Helvetica-Bold').fontSize(9).fillColor(TEXTO)
+            .text(etiqueta, xMitad + 8, yFila + 6, { width: ANCHO_ETIQ - 16, lineBreak: false });
+        doc.font('Helvetica').fontSize(10).fillColor(TEXTO)
+            .text(valor, xMitad + ANCHO_ETIQ + 8, yFila + 5, { width: ANCHO / 2 - ANCHO_ETIQ - 16, lineBreak: false });
+    });
+    doc.y = yCuerpo + ALTO_DET + 14;
+
     tabla(
         doc,
         [
-            { titulo: 'Descripción', ancho: 255 },
-            { titulo: 'Cant.', ancho: 50, alinear: 'right' },
-            { titulo: 'Precio unit.', ancho: 100, alinear: 'right' },
-            { titulo: 'Subtotal', ancho: 110, alinear: 'right' }
+            { titulo: '#', ancho: 30 },
+            { titulo: 'Descripción', ancho: 235 },
+            { titulo: 'Cantidad', ancho: 60, alinear: 'right' },
+            { titulo: 'Precio', ancho: 90, alinear: 'right' },
+            { titulo: 'Importe', ancho: 100, alinear: 'right' }
         ],
-        venta.items.map(i => [
+        venta.items.map((i, n) => [
+            n + 1,
             i.descripcion,
             i.cantidad,
             dinero(i.precio_cliente),
@@ -165,16 +265,7 @@ function generarRemito(venta, salida) {
         ])
     );
 
-    // ---------- Totales ----------
-    lineaTotal(doc, 'Total', dinero(venta.total_venta), { negrita: true });
-    if (!anulada) {
-        lineaTotal(doc, 'Pagado', dinero(venta.total_pagado));
-        lineaTotal(doc, 'Saldo pendiente', dinero(venta.saldo), {
-            negrita: true,
-            color: venta.saldo > 0 ? ROJO : VERDE
-        });
-    }
-    doc.y += 10;
+    cuadroTotales(doc, venta, anulada);
 
     // ---------- Plan de pagos ----------
     if (!anulada && venta.cuotas.length > 0) {
@@ -225,13 +316,6 @@ function generarRemito(venta, salida) {
         doc.y += 10;
     }
 
-    // ---------- Pie ----------
-    asegurarEspacio(doc, 50);
-    doc.y += 14;
-    doc.font('Helvetica-Bold').fontSize(10).fillColor(AZUL)
-        .text('¡Gracias por su compra!', MARGEN, doc.y, { width: ANCHO, align: 'center' });
-    doc.font('Helvetica').fontSize(8).fillColor(GRIS)
-        .text('Documento no válido como factura.', MARGEN, doc.y + 2, { width: ANCHO, align: 'center' });
 
     doc.end();
 }
