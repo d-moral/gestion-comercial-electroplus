@@ -4,10 +4,16 @@ services:
     container_name: electroplus_app
     ports:
       - "127.0.0.1:3001:3000"
-    env_file:
-      - .env
+    environment:
+      PORT: 3000
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-electroplus_gestion}
+      DB_USER: ${DB_USER:-postgres}
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     volumes:
       - ./src:/app/src
       - ./public:/app/public
@@ -18,9 +24,14 @@ services:
     image: postgres:16-alpine
     container_name: electroplus_db
     environment:
-      POSTGRES_DB: ${DB_NAME}
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME:-electroplus_gestion}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${DB_USER:-postgres} -d ${DB_NAME:-electroplus_gestion}" ]
+      interval: 3s
+      timeout: 3s
+      retries: 30
     ports:
       - "127.0.0.1:5433:5432"
     volumes:
